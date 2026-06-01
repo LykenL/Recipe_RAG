@@ -22,8 +22,9 @@ def _resolve_vector_store() -> Path:
 @st.cache_resource(show_spinner="Loading recipe index and embedding model…")
 def _load_assistant():
     from recipe_rag.app import RecipeRAGAssistant
-    from recipe_rag.config import load_env
+    from recipe_rag.config import hydrate_config_from_streamlit_secrets, load_env
 
+    hydrate_config_from_streamlit_secrets()
     env_file = _ROOT / ".env"
     load_env(env_file if env_file.is_file() else None)
     return RecipeRAGAssistant.from_files(

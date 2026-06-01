@@ -52,7 +52,7 @@ git push -u origin main
 
 ## 步骤 3：配置 Secrets（API Key）
 
-在 App 页面 → **Settings** → **Secrets**，粘贴（把值换成你自己的）：
+在 App 页面右上角 **⋮** → **Settings** → **Secrets**，粘贴（把值换成你自己的）：
 
 ```toml
 OPENAI_API = "nvapi-xxxxxxxx"
@@ -60,7 +60,35 @@ OPENAI_BASE_URL = "https://integrate.api.nvidia.com/v1"
 OPENAI_MODEL = "meta/llama-3.1-70b-instruct"
 ```
 
-保存后点 **Reboot app**。也可参考 `.streamlit/secrets.toml.example`。
+注意：
+
+- 键名必须是 **`OPENAI_API`**（两个名字都支持，推荐前者）。
+- 必须是合法 **TOML**（见下方「Secrets 正确写法」）。
+- 保存后必须点 **Reboot app**。
+
+### Secrets 正确写法（避免 `Invalid format: please enter valid TOML`）
+
+**只粘贴下面 3 行**（把中间换成你的 key，保留英文双引号 `"`）：
+
+```toml
+OPENAI_API = "nvapi-粘贴你的密钥"
+OPENAI_BASE_URL = "https://integrate.api.nvidia.com/v1"
+OPENAI_MODEL = "meta/llama-3.1-70b-instruct"
+```
+
+**不要：**
+
+| 错误写法 | 原因 |
+|----------|------|
+| `OPENAI_API=nvapi-xxx` | 这是 `.env` 格式，不是 TOML |
+| 粘贴 \`\`\`toml 代码块标记 | Secrets 框里只要纯文本 |
+| 用中文弯引号 `“”` | 必须用英文 `"` |
+| 密钥行末尾加 `# 注释` | 容易破坏解析，先不要注释 |
+| 整段 JSON | 不支持 |
+
+若 key 里含有 `"` 或 `\`，在 TOML 里要写成 `\"` 和 `\\`，或换用 NVIDIA 后台新生成的 key。
+
+也可参考 `.streamlit/secrets.toml.example`。
 
 本地开发仍用 `.env`；云端只读 Secrets，不会上传 `.env`。
 
