@@ -79,8 +79,16 @@ class RecipeRAGAssistant:
         name = intent.get("intent")
 
         if name == "ScaleRecipeIntent":
-            return "ScaleRecipeIntent detected (hook up scaling UI/tooling in demo)."
-
+            recipe_name = (intent.get("recipe_name") or "").strip()
+            if not recipe_name or recipe_name.lower() in ("recipe", "a recipe", "the recipe", "this recipe"):
+                return self.answer(query, mode="cooking")
+            return self.answer(
+                query,
+                search_query=recipe_name,
+                mode="recipe",
+                recipe_name=recipe_name,
+                require_cookbook_match=False,
+            )
         if name == "OtherIntent":
             if is_cooking_related(query):
                 return self.answer(query, mode="cooking")
