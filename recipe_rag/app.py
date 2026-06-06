@@ -1,3 +1,4 @@
+# recipe_rag/app.py
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -9,10 +10,8 @@ from sentence_transformers import SentenceTransformer
 from .config import load_env, load_llm_config
 from .formatting import normalize_answer_lines
 from .llm import LLMClient
-from .prompting import OFF_TOPIC_REFUSAL, PromptMode, construct_prompt
-from .relevance import is_cookbook_relevant
+from .prompting import AGENT_SYSTEM_PROMPT
 from .retrieval import search_for_prompt
-from .router import classify_intent, is_cooking_related
 from .vector_store import load_vector_store
 
 
@@ -36,73 +35,58 @@ class RecipeRAGAssistant:
         vector_store = load_vector_store(vector_store_path)
         return cls(embedder=embedder, vector_store=vector_store, llm=llm)
 
-    def answer(
-        self,
-        query: str,
-        *,
-        search_query: str | None = None,
-        mode: PromptMode = "recipe",
-        recipe_name: str | None = None,
-        require_cookbook_match: bool = False,
-    ) -> str:
-        retrieval_query = (search_query or query).strip()
-        k = 2 if mode == "cooking" else 3
+    def search_cookbook(self, query: str) -> str:
+        """Tool handler for searching the cookbook vector database."""
         result = search_for_prompt(
             self.embedder,
             self.vector_store,
-            retrieval_query,
-            k=k,
+            query,
+            k=3,
             min_similarity=0.15,
-            max_chars_per_entry=400 if mode == "cooking" else 520,
+            max_chars_per_entry=400,
         )
+        if not result.blocks:
+            return "No matching recipes found."
+        return "\n\n---\n\n".join(result.blocks)
 
-        relevant = is_cookbook_relevant(
-            query,
-            result.hits,
-            recipe_name=recipe_name or search_query,
+    def run(self, query: str) -> str:
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "search_cookbook",
+                    "description": "Searches the cookbook database for recipes, ingredients, and cooking instructions. Use this to find specific recipes or culinary information.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "The search query (e.g., 'strawberry pie', 'chicken', 'sugar substitute')"
+                            }
+                        },
+                        "required": ["query"],
+                        "additionalProperties": False
+                    }
+                }
+            }
+        ]
+        
+        tool_handlers = {
+            "search_cookbook": self.search_cookbook
+        }
+
+        # Run the autonomous execution loop
+        raw_answer = self.llm.agent_loop(
+            system_prompt=AGENT_SYSTEM_PROMPT,
+            user_query=query,
+            tools=tools,
+            tool_handlers=tool_handlers,
+            max_iterations=5,
+            max_tokens=400
         )
-        if require_cookbook_match and not relevant:
-            mode = "no_cookbook_match"
-            blocks: list[str] = []
-        elif mode == "cooking" and not relevant:
-            # Weak vector hits do more harm than good for general cooking Qs.
-            blocks = []
-        else:
-            blocks = result.blocks
+        
+        return normalize_answer_lines(raw_answer)
 
-        prompt = construct_prompt(query, blocks, mode=mode)
-        max_tokens = 220 if mode in ("cooking", "no_cookbook_match") else 280
-        return normalize_answer_lines(self.llm.chat(prompt, max_tokens=max_tokens))
-
+    # Provide a route alias to avoid immediately breaking UI/evaluators that still call .route()
     def route(self, query: str) -> str:
-        intent = classify_intent(self.llm, query)
-        name = intent.get("intent")
-
-        if name == "ScaleRecipeIntent":
-            recipe_name = (intent.get("recipe_name") or "").strip()
-            if not recipe_name or recipe_name.lower() in ("recipe", "a recipe", "the recipe", "this recipe"):
-                return self.answer(query, mode="cooking")
-            return self.answer(
-                query,
-                search_query=recipe_name,
-                mode="recipe",
-                recipe_name=recipe_name,
-                require_cookbook_match=False,
-            )
-        if name == "OtherIntent":
-            if is_cooking_related(query):
-                return self.answer(query, mode="cooking")
-            return OFF_TOPIC_REFUSAL
-
-        if name == "CookingQuestionIntent":
-            return self.answer(query, mode="cooking")
-
-        recipe_name = (intent.get("recipe_name") or "").strip()
-        search_query = recipe_name if recipe_name else query
-        return self.answer(
-            query,
-            search_query=search_query,
-            mode="recipe",
-            recipe_name=recipe_name or None,
-            require_cookbook_match=True,
-        )
+        return self.run(query)
