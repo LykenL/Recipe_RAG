@@ -319,6 +319,23 @@ details[data-testid="stExpander"] > div {
     color: rgba(255, 255, 255, 0.9) !important;
 }
 
+/* ── loading animation ── */
+@keyframes pulse {
+    0% { opacity: 0.6; transform: scale(0.98); }
+    50% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0.6; transform: scale(0.98); }
+}
+.loading-text {
+    animation: pulse 1.5s infinite;
+    text-align: center;
+    color: #feb47b;
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin: 2rem 0;
+    font-family: 'Outfit', sans-serif;
+    letter-spacing: 0.5px;
+}
+
 /* ── hide Streamlit chrome ── */
 #MainMenu, footer, header { visibility: hidden; }
 </style>
@@ -399,34 +416,32 @@ def main() -> None:
         custom_ingredients = st.text_input("Any other ingredients?", placeholder="e.g. Soy sauce, Ginger, Pork")
         
         st.markdown("### ⚡ Quick Inspiration")
-        # Use session state to handle quick prompts
-        if "quick_prompt" not in st.session_state:
-            st.session_state.quick_prompt = ""
-            
-        if st.button("⏱️ 15-Minute Dinner"):
-            st.session_state.quick_prompt = "Recommend a 15-minute dinner."
-        if st.button("🏋️ High Protein Meal"):
-            st.session_state.quick_prompt = "Recommend a high protein, low fat meal."
-        if st.button("🍰 No-Bake Dessert"):
-            st.session_state.quick_prompt = "Recommend a dessert that doesn't require an oven."
+        # Use session state to automatically populate and submit
+        if st.button("⏱️ Quick Dinner", use_container_width=True):
+            st.session_state.query_input = "Recommend a quick and easy dinner."
+            st.session_state.auto_submit = True
+        if st.button("🏋️ High Protein Meal", use_container_width=True):
+            st.session_state.query_input = "Recommend a high protein, low fat meal."
+            st.session_state.auto_submit = True
+        if st.button("🍰 No-Bake Dessert", use_container_width=True):
+            st.session_state.query_input = "Recommend a dessert that doesn't require an oven."
+            st.session_state.auto_submit = True
 
     # ── Input card ────────────────────────────────────────────────────────────
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
 
-    # Pre-fill query with quick prompt if clicked
-    default_query = st.session_state.quick_prompt if st.session_state.quick_prompt else ""
     query = st.text_area(
         "Your Question",
-        value=default_query,
         placeholder="e.g.  How many cups of flour do I need for 2 servings of pasta?",
         height=110,
         key="query_input",
     )
-    
-    # Clear quick prompt after rendering it to the text area
-    st.session_state.quick_prompt = ""
 
     ask = st.button("✨  Ask the Chef", use_container_width=True)
+    
+    if st.session_state.get("auto_submit", False):
+        ask = True
+        st.session_state.auto_submit = False
 
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -455,8 +470,28 @@ def main() -> None:
         if actual_pantry:
             augmented_query += f"\n\nI have the following ingredients available in my pantry: {', '.join(actual_pantry)}. Try to use them if possible."
 
-        st.markdown('<div class="glass-card"><p class="section-label">Chef\'s Answer</p>', unsafe_allow_html=True)
+        st.markdown('<div class="glass-card"><p class="section-label" id="answer-section">Chef\'s Answer</p>', unsafe_allow_html=True)
+        
+        # Inject JavaScript to auto-scroll to the answer section
+        import streamlit.components.v1 as components
+        components.html(
+            """
+            <script>
+                var target = window.parent.document.getElementById('answer-section');
+                if (target) {
+                    target.scrollIntoView({behavior: 'smooth', block: 'start'});
+                }
+            </script>
+            """,
+            height=0
+        )
+        
         answer_placeholder = st.empty()
+        
+        answer_placeholder.markdown(
+            '<div class="loading-text">👨‍🍳 The Chef is thinking...</div>', 
+            unsafe_allow_html=True
+        )
         
         full_answer = ""
         try:

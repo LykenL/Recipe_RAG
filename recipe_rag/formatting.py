@@ -10,8 +10,9 @@ def normalize_answer_lines(text: str) -> str:
     if not text:
         return text
     # LLMs often join bullets on one line: "...sauce. • Using milk..."
-    text = re.sub(r"(?<!\n)\s*•\s*", "\n\n• ", text)
-    text = re.sub(r"\n{3,}", "\n\n", text)
+    text = re.sub(r"(?<!\n)\s*•\s*", "\n• ", text)
+    # Remove all blank lines by collapsing multiple newlines into one
+    text = re.sub(r"\n+", "\n", text)
     return text.strip()
 
 
