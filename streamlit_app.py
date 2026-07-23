@@ -416,9 +416,8 @@ def main() -> None:
         custom_ingredients = st.text_input("Any other ingredients?", placeholder="e.g. Soy sauce, Ginger, Pork")
         
         st.markdown("### ⚡ Quick Inspiration")
-        # Use session state to automatically populate and submit
         if st.button("⏱️ Quick Dinner", use_container_width=True):
-            st.session_state.query_input = "Recommend a quick and easy dinner."
+            st.session_state.query_input = "Recommend a quick and easy dinner. CRITICAL CONSTRAINT: It MUST take under 20 minutes total, use 6 ingredients or fewer, and have a very short, simple preparation process (under 5 steps)."
             st.session_state.auto_submit = True
         if st.button("🏋️ High Protein Meal", use_container_width=True):
             st.session_state.query_input = "Recommend a high protein, low fat meal."
