@@ -46,7 +46,7 @@ def _get_bg() -> str:
 # __BG__ is replaced at runtime with the base64 data URI.
 _CSS_TEMPLATE = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
 
 /* ── full-screen background ── */
 .stApp {
@@ -62,12 +62,7 @@ _CSS_TEMPLATE = """
     content: '';
     position: fixed;
     inset: 0;
-    background: linear-gradient(
-        135deg,
-        rgba(8,18,24,0.90)  0%,
-        rgba(12,28,38,0.84) 45%,
-        rgba(30,16,8,0.82) 100%
-    );
+    background: radial-gradient(circle at 50% 0%, rgba(30,20,15,0.7) 0%, rgba(10,12,16,0.95) 70%);
     z-index: 0;
     pointer-events: none;
 }
@@ -76,191 +71,252 @@ _CSS_TEMPLATE = """
 .main .block-container {
     position: relative;
     z-index: 1;
-    padding-top: 1.5rem;
-    max-width: 820px;
+    padding-top: 3rem;
+    max-width: 860px;
 }
 
 /* ── hero ── */
 .hero {
     text-align: center;
-    padding: 2.8rem 1rem 2.2rem;
+    padding: 2rem 1rem 3rem;
 }
 .hero-emoji {
-    font-size: 3.8rem;
+    font-size: 4.5rem;
     display: block;
-    margin-bottom: 0.35rem;
-    filter: drop-shadow(0 0 18px rgba(220,150,60,0.75));
-    animation: float 3s ease-in-out infinite;
+    margin-bottom: 0.5rem;
+    filter: drop-shadow(0 10px 20px rgba(230, 140, 40, 0.4));
+    animation: float 4s ease-in-out infinite;
 }
 @keyframes float {
-    0%,100% { transform: translateY(0);   }
-    50%      { transform: translateY(-9px); }
+    0%,100% { transform: translateY(0) scale(1);   }
+    50%      { transform: translateY(-12px) scale(1.05); }
 }
 .hero-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 2.7rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 3.5rem;
     font-weight: 700;
-    color: #f7f4ee !important;
-    letter-spacing: -0.4px;
+    color: #ffffff !important;
+    letter-spacing: -1px;
     line-height: 1.1;
     margin: 0;
-    text-shadow: 0 1px 28px rgba(255, 248, 235, 0.35),
-                 0 2px 12px rgba(0, 0, 0, 0.25);
-}
-.hero .hero-title {
-    color: #f7f4ee !important;
+    background: linear-gradient(135deg, #ffffff 0%, #f0c040 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 4px 30px rgba(240, 192, 64, 0.2);
 }
 .hero-subtitle {
-    margin-top: 0.7rem;
-    font-size: 0.97rem;
-    color: rgba(255,255,255,0.50);
+    margin-top: 1rem;
+    font-size: 1.1rem;
+    color: rgba(255,255,255,0.6);
     font-weight: 300;
-    letter-spacing: 0.4px;
+    letter-spacing: 0.5px;
 }
 .accent-line {
-    width: 58px;
-    height: 3px;
-    background: linear-gradient(90deg, #e07b2a, #f0c040);
-    border-radius: 2px;
-    margin: 1.1rem auto 0;
+    width: 80px;
+    height: 4px;
+    background: linear-gradient(90deg, #ff7e5f, #feb47b);
+    border-radius: 4px;
+    margin: 1.5rem auto 0;
+    box-shadow: 0 2px 10px rgba(255, 126, 95, 0.4);
 }
 
-/* ── glass card ── */
+/* ── premium glass card ── */
 .glass-card {
-    background: rgba(255,255,255,0.055);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255,255,255,0.11);
-    border-radius: 20px;
-    padding: 2rem 2.2rem;
-    margin-bottom: 1.4rem;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+    background: rgba(20, 25, 35, 0.4);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    padding: 2.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.glass-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.15);
 }
 
 /* ── form labels ── */
 .stTextArea label,
 .stSelectbox label {
-    color: rgba(255,255,255,0.70) !important;
-    font-size: 0.82rem !important;
+    color: rgba(255,255,255,0.85) !important;
+    font-size: 0.85rem !important;
     font-weight: 600 !important;
-    letter-spacing: 0.9px !important;
+    letter-spacing: 1.2px !important;
     text-transform: uppercase !important;
+    font-family: 'Outfit', sans-serif !important;
+    margin-bottom: 0.5rem !important;
 }
 
-/* ── textarea (dark input surface) ── */
+/* ── textarea (modern input surface) ── */
 .stTextArea > div > div > textarea,
 .stTextArea textarea {
-    background: rgba(8, 14, 20, 0.92) !important;
-    border: 1px solid rgba(255,255,255,0.12) !important;
-    border-radius: 13px !important;
-    color: #f2f6fa !important;
-    font-size: 0.98rem !important;
+    background: rgba(10, 15, 25, 0.6) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    border-radius: 16px !important;
+    color: #ffffff !important;
+    font-size: 1.05rem !important;
     font-family: 'Inter', sans-serif !important;
-    caret-color: #f0c040;
-    transition: border 0.25s, box-shadow 0.25s;
+    padding: 1rem !important;
+    caret-color: #feb47b;
+    transition: all 0.3s ease !important;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2) !important;
 }
 .stTextArea > div > div {
     background: transparent !important;
 }
 .stTextArea textarea:focus {
-    border: 1px solid rgba(220,150,60,0.55) !important;
-    box-shadow: 0 0 0 3px rgba(220,150,60,0.12) !important;
+    border: 1px solid rgba(254, 180, 123, 0.6) !important;
+    box-shadow: 0 0 0 4px rgba(254, 180, 123, 0.15), inset 0 2px 4px rgba(0,0,0,0.2) !important;
     outline: none !important;
-    background: rgba(6, 12, 18, 0.96) !important;
+    background: rgba(10, 15, 25, 0.8) !important;
 }
 .stTextArea textarea::placeholder {
-    color: rgba(255,255,255,0.32) !important;
+    color: rgba(255,255,255,0.25) !important;
+    font-weight: 300;
 }
 
 /* ── selectbox ── */
 .stSelectbox > div > div {
-    background: rgba(255,255,255,0.07) !important;
-    border: 1px solid rgba(255,255,255,0.15) !important;
-    border-radius: 13px !important;
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    border-radius: 12px !important;
     color: #ffffff !important;
+    transition: all 0.3s ease !important;
+}
+.stSelectbox > div > div:hover {
+    border-color: rgba(255,255,255,0.2) !important;
 }
 
-/* ── primary button ── */
+/* ── premium primary button ── */
 div.stButton > button {
-    background: linear-gradient(135deg, #e07b2a 0%, #f0c040 100%) !important;
-    color: #111111 !important;
-    font-weight: 700 !important;
-    font-size: 1rem !important;
-    letter-spacing: 0.4px !important;
+    background: linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%) !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    font-family: 'Outfit', sans-serif !important;
+    font-size: 1.1rem !important;
+    letter-spacing: 0.5px !important;
     border: none !important;
-    border-radius: 13px !important;
-    padding: 0.7rem 2.2rem !important;
+    border-radius: 16px !important;
+    padding: 0.8rem 2.5rem !important;
     width: 100% !important;
     cursor: pointer !important;
-    box-shadow: 0 4px 22px rgba(220,130,40,0.40) !important;
-    transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+    box-shadow: 0 8px 25px rgba(255, 126, 95, 0.3) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 div.stButton > button:hover {
-    transform: translateY(-3px) !important;
-    box-shadow: 0 10px 30px rgba(220,130,40,0.60) !important;
+    transform: translateY(-4px) scale(1.01) !important;
+    box-shadow: 0 15px 35px rgba(255, 126, 95, 0.5) !important;
 }
 div.stButton > button:active {
-    transform: translateY(-1px) !important;
+    transform: translateY(-1px) scale(0.99) !important;
+    box-shadow: 0 5px 15px rgba(255, 126, 95, 0.3) !important;
 }
 
 /* ── answer card ── */
 .answer-card {
-    background: rgba(220,150,60,0.07);
-    border-left: 4px solid #e07b2a;
-    border-radius: 0 14px 14px 0;
-    padding: 1.3rem 1.5rem;
-    color: rgba(255,255,255,0.88);
-    font-size: 1rem;
-    line-height: 1.75;
-    margin-top: 0.4rem;
+    background: linear-gradient(180deg, rgba(254, 180, 123, 0.08) 0%, rgba(255, 126, 95, 0.03) 100%);
+    border-left: 4px solid #ff7e5f;
+    border-radius: 0 20px 20px 0;
+    padding: 2rem;
+    color: rgba(255,255,255,0.9);
+    font-size: 1.05rem;
+    line-height: 1.8;
+    margin-top: 1rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
     white-space: pre-wrap;
-    word-wrap: break-word;
-    overflow-wrap: anywhere;
+}
+.answer-card ul, .answer-card ol {
+    padding-left: 1.5rem;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+.answer-card li {
+    margin-bottom: 0.5rem;
 }
 
 /* ── section label ── */
 .section-label {
-    font-size: 0.75rem;
+    font-size: 0.9rem;
     font-weight: 700;
-    letter-spacing: 1.4px;
+    letter-spacing: 1.5px;
     text-transform: uppercase;
-    color: #e07b2a;
-    margin-bottom: 0.6rem;
+    color: #feb47b;
+    margin-bottom: 0.8rem;
+    font-family: 'Outfit', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.section-label::before {
+    content: '';
+    display: block;
+    width: 12px;
+    height: 12px;
+    background: #ff7e5f;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(255, 126, 95, 0.8);
 }
 
 /* ── image caption ── */
 .stImage > div > p {
-    color: rgba(255,255,255,0.38) !important;
-    font-size: 0.78rem !important;
+    color: rgba(255,255,255,0.4) !important;
+    font-size: 0.85rem !important;
     text-align: center;
+    margin-top: 0.5rem;
 }
 
 /* ── spinner / alerts ── */
 .stSpinner > div {
-    border-top-color: #e07b2a !important;
+    border-top-color: #ff7e5f !important;
 }
 .stAlert {
     background: rgba(255,255,255,0.05) !important;
-    border-radius: 12px !important;
-    color: rgba(255,255,255,0.70) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    border-radius: 16px !important;
+    color: rgba(255,255,255,0.8) !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3) !important;
 }
 
 /* ── expander (advanced viz) ── */
 .streamlit-expanderHeader {
-    background: rgba(255,255,255,0.04) !important;
-    border-radius: 12px !important;
-    color: rgba(255,255,255,0.55) !important;
-    font-size: 0.82rem !important;
-    letter-spacing: 0.3px;
+    background: rgba(255,255,255,0.03) !important;
+    border-radius: 14px !important;
+    color: rgba(255,255,255,0.6) !important;
+    font-size: 0.9rem !important;
+    letter-spacing: 0.5px;
+    font-family: 'Outfit', sans-serif !important;
+    transition: all 0.3s ease !important;
+}
+.streamlit-expanderHeader:hover {
+    background: rgba(255,255,255,0.06) !important;
+    color: rgba(255,255,255,0.8) !important;
 }
 details[data-testid="stExpander"] {
-    background: rgba(255,255,255,0.03);
+    background: rgba(10, 15, 25, 0.4);
     border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 14px;
-    margin-top: 0.5rem;
+    border-radius: 16px;
+    margin-top: 1rem;
+    overflow: hidden;
 }
 details[data-testid="stExpander"] > div {
-    border-top: 1px solid rgba(255,255,255,0.06);
+    border-top: 1px solid rgba(255,255,255,0.05);
+    padding: 1.5rem;
+}
+
+/* ── sidebar styling ── */
+[data-testid="stSidebar"] {
+    background-color: rgba(10, 12, 16, 0.95) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+[data-testid="stSidebar"] label, 
+[data-testid="stSidebar"] p, 
+[data-testid="stSidebar"] h1, 
+[data-testid="stSidebar"] h2, 
+[data-testid="stSidebar"] h3, 
+[data-testid="stSidebar"] span {
+    color: rgba(255, 255, 255, 0.9) !important;
 }
 
 /* ── hide Streamlit chrome ── */
@@ -320,20 +376,56 @@ def main() -> None:
     </div>
     """, unsafe_allow_html=True)
 
+    # ── Sidebar ───────────────────────────────────────────────────────────────
+    with st.sidebar:
+        st.markdown("### 👨‍🍳 Chef's Settings")
+        
+        persona = st.selectbox(
+            "Chef Persona",
+            ["Friendly Home Cook", "Gordon Ramsay (Harsh & Pro)", "Nutritionist (Health-focused)"]
+        )
+        
+        st.markdown("### 🥦 Dietary Restrictions")
+        is_veg = st.checkbox("Vegetarian")
+        is_gf = st.checkbox("Gluten-Free")
+        is_nut_free = st.checkbox("Nut Allergy")
+        
+        st.markdown("### 🧊 My Pantry")
+        pantry = st.multiselect(
+            "What's in your fridge?",
+            ["Eggs", "Milk", "Chicken", "Beef", "Salmon", "Onions", "Garlic", "Tomatoes", "Potatoes", "Pasta", "Rice", "Cheese"]
+        )
+        
+        custom_ingredients = st.text_input("Any other ingredients?", placeholder="e.g. Soy sauce, Ginger, Pork")
+        
+        st.markdown("### ⚡ Quick Inspiration")
+        # Use session state to handle quick prompts
+        if "quick_prompt" not in st.session_state:
+            st.session_state.quick_prompt = ""
+            
+        if st.button("⏱️ 15-Minute Dinner"):
+            st.session_state.quick_prompt = "Recommend a 15-minute dinner."
+        if st.button("🏋️ High Protein Meal"):
+            st.session_state.quick_prompt = "Recommend a high protein, low fat meal."
+        if st.button("🍰 No-Bake Dessert"):
+            st.session_state.quick_prompt = "Recommend a dessert that doesn't require an oven."
+
     # ── Input card ────────────────────────────────────────────────────────────
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
 
+    # Pre-fill query with quick prompt if clicked
+    default_query = st.session_state.quick_prompt if st.session_state.quick_prompt else ""
     query = st.text_area(
         "Your Question",
+        value=default_query,
         placeholder="e.g.  How many cups of flour do I need for 2 servings of pasta?",
         height=110,
-        key="query",
+        key="query_input",
     )
-    model_option = st.selectbox(          # noqa: F841  (used as display only for now)
-        "LLM Backend",
-        ["openai", "gemini", "claude"],
-        index=0,
-    )
+    
+    # Clear quick prompt after rendering it to the text area
+    st.session_state.quick_prompt = ""
+
     ask = st.button("✨  Ask the Chef", use_container_width=True)
 
     st.markdown("</div>", unsafe_allow_html=True)
@@ -341,20 +433,53 @@ def main() -> None:
     # ── Answer ────────────────────────────────────────────────────────────────
     if ask and query.strip():
         from recipe_rag.formatting import answer_to_html
+        
+        # Build the augmented query based on sidebar settings
+        augmented_query = query.strip()
+        
+        if persona != "Friendly Home Cook":
+            augmented_query = f"[System Instructions: Please answer in the persona of {persona}] " + augmented_query
+            
+        restrictions = []
+        if is_veg: restrictions.append("Vegetarian")
+        if is_gf: restrictions.append("Gluten-Free")
+        if is_nut_free: restrictions.append("No Nuts (Allergy)")
+        
+        if restrictions:
+            augmented_query += f"\n\nDietary Restrictions: {', '.join(restrictions)}. Please ensure the recipe strictly follows these."
+            
+        actual_pantry = list(pantry)
+        if custom_ingredients:
+            actual_pantry.extend([x.strip() for x in custom_ingredients.split(",") if x.strip()])
+            
+        if actual_pantry:
+            augmented_query += f"\n\nI have the following ingredients available in my pantry: {', '.join(actual_pantry)}. Try to use them if possible."
 
-        with st.spinner("Searching recipes and generating answer…"):
-            try:
-                answer = _load_assistant().route(query)
-            except Exception as exc:
-                answer = f"⚠️  {exc}"
-
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        st.markdown('<p class="section-label">Chef\'s Answer</p>', unsafe_allow_html=True)
-        st.markdown(
-            f'<div class="answer-card">{answer_to_html(answer)}</div>',
-            unsafe_allow_html=True,
-        )
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown('<div class="glass-card"><p class="section-label">Chef\'s Answer</p>', unsafe_allow_html=True)
+        answer_placeholder = st.empty()
+        
+        full_answer = ""
+        try:
+            import time
+            for chunk in _load_assistant().route(augmented_query):
+                full_answer += chunk
+                answer_placeholder.markdown(
+                    f'<div class="answer-card">{answer_to_html(full_answer)}▌</div>', 
+                    unsafe_allow_html=True
+                )
+                time.sleep(0.015)
+            # 最终去掉闪烁的光标
+            answer_placeholder.markdown(
+                f'<div class="answer-card">{answer_to_html(full_answer)}</div>', 
+                unsafe_allow_html=True
+            )
+        except Exception as exc:
+            answer_placeholder.markdown(
+                f'<div class="answer-card">⚠️ {exc}</div>', 
+                unsafe_allow_html=True
+            )
+            
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Optional embedding viz (collapsed by default) ───────────────────────
     _render_embedding_viz()

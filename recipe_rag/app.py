@@ -76,17 +76,15 @@ class RecipeRAGAssistant:
         }
 
         # Run the autonomous execution loop
-        raw_answer = self.llm.agent_loop(
+        yield from self.llm.agent_loop(
             system_prompt=AGENT_SYSTEM_PROMPT,
             user_query=query,
             tools=tools,
             tool_handlers=tool_handlers,
             max_iterations=5,
-            max_tokens=400
+            max_tokens=2048
         )
-        
-        return normalize_answer_lines(raw_answer)
 
     # Provide a route alias to avoid immediately breaking UI/evaluators that still call .route()
-    def route(self, query: str) -> str:
-        return self.run(query)
+    def route(self, query: str):
+        yield from self.run(query)

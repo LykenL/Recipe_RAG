@@ -45,45 +45,78 @@ class LLMClient:
         ]
 
         for _ in range(max_iterations):
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                tools=tools,
-                tool_choice="auto",
-                max_tokens=max_tokens,
-            )
-            
-            message = response.choices[0].message
-            
-            # If the model does not want to call any tools, it's done.
-            if not getattr(message, "tool_calls", None):
-                return message.content.strip()
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    tools=tools,
+                    tool_choice="auto",
+                    max_tokens=max_tokens,
+                    stream=True,
+                )
+            except Exception as e:
+                yield f"\n\n⚠️ API Error: {e}"
+                return
 
-            # The model called tools. Append the assistant's action to history.
-            messages.append(message.model_dump(exclude_unset=True))
+            tool_calls = []
+            full_content = ""
 
-            # Execute each tool
-            for tool_call in message.tool_calls:
-                func_name = tool_call.function.name
-                func_args = json.loads(tool_call.function.arguments)
+            for chunk in response:
+                delta = chunk.choices[0].delta
                 
-                # Execute the bound python function
-                if func_name in tool_handlers:
-                    try:
+                # 1. Accumulate Tool Calls
+                if delta.tool_calls:
+                    for tc in delta.tool_calls:
+                        # Ensure list is long enough
+                        while len(tool_calls) <= tc.index:
+                            tool_calls.append({
+                                "id": "", 
+                                "type": "function", 
+                                "function": {"name": "", "arguments": ""}
+                            })
+                        
+                        if tc.id:
+                            tool_calls[tc.index]["id"] = tc.id
+                        if tc.function.name:
+                            tool_calls[tc.index]["function"]["name"] = tc.function.name
+                        if tc.function.arguments:
+                            tool_calls[tc.index]["function"]["arguments"] += tc.function.arguments
+
+                # 2. Yield text content directly to frontend
+                if delta.content:
+                    full_content += delta.content
+                    yield delta.content
+
+            # If no tools were called, the text we just yielded is the final answer!
+            if not tool_calls:
+                return
+
+            # Otherwise, the model called tools. We append its action to history.
+            assistant_msg = {
+                "role": "assistant",
+                "content": full_content if full_content else "",
+                "tool_calls": tool_calls
+            }
+            messages.append(assistant_msg)
+
+            # Execute the tools and feed results back to the LLM
+            for tool_call in tool_calls:
+                func_name = tool_call["function"]["name"]
+                try:
+                    func_args = json.loads(tool_call["function"]["arguments"])
+                    if func_name in tool_handlers:
                         tool_result = tool_handlers[func_name](**func_args)
-                    except Exception as e:
-                        tool_result = f"Error executing tool: {e}"
-                else:
-                    tool_result = f"Error: Tool {func_name} not found."
+                    else:
+                        tool_result = f"Error: Tool {func_name} not found."
+                except Exception as e:
+                    tool_result = f"Error executing tool: {e}"
                 
-                # Append tool result to history
                 messages.append({
                     "role": "tool",
-                    "tool_call_id": tool_call.id,
+                    "tool_call_id": tool_call["id"],
                     "content": str(tool_result)
                 })
 
-        # Fallback if max_iterations exceeded
-        return "Agent stopped: Reached maximum thinking steps."
+        yield "\n\n⚠️ Agent stopped: Reached maximum thinking steps."
 
 
