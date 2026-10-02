@@ -12,6 +12,26 @@ interface Props {
   pending: boolean
 }
 
+const LIST_LINE = /^\s*([-*+]|\d+[.)])\s+/
+
+/**
+ * Markdown requires a blank line before a list. Models routinely emit
+ * "**Ingredients**\n- 2 Lbs Chicken Wings", which CommonMark renders as one
+ * paragraph ("Ingredients • 2 Lbs Chicken Wings"). Inserting the missing blank
+ * line is more reliable than asking the model to remember every time.
+ */
+function normalizeMarkdown(md: string): string {
+  const out: string[] = []
+  for (const line of md.split('\n')) {
+    const prev = out[out.length - 1]
+    if (LIST_LINE.test(line) && prev && prev.trim() !== '' && !LIST_LINE.test(prev)) {
+      out.push('')
+    }
+    out.push(line)
+  }
+  return out.join('\n')
+}
+
 /**
  * The model answers in markdown whose first line is the dish name, either as a
  * heading (`## X`) or as a bold line (`**X**`). Pulling it out lets the card use
@@ -53,6 +73,7 @@ function splitTitle(markdown: string): { title?: string; body: string; improvise
 export function AnswerCard({ content, sources, done, error, pending }: Props) {
   const [copied, setCopied] = useState(false)
   const { title, body, improvised } = splitTitle(content)
+  const rendered = normalizeMarkdown(body || content)
 
   const copy = async () => {
     try {
@@ -103,7 +124,7 @@ export function AnswerCard({ content, sources, done, error, pending }: Props) {
 
       <div className="ans-body">
         <div className="answer-md">
-          <Markdown remarkPlugins={[remarkGfm]}>{body || content}</Markdown>
+          <Markdown remarkPlugins={[remarkGfm]}>{rendered}</Markdown>
           {pending && <span className="caret" />}
         </div>
       </div>

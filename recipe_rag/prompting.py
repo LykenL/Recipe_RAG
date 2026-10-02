@@ -65,6 +65,7 @@ RULES — follow them exactly:
 
 Formatting:
 - Dish name as the heading.
+- Leave a BLANK LINE before every heading, bullet list and numbered list.
 - Ingredients as bullet points starting with "•".
 - Instructions as a numbered list.
 - Keep it tight; no filler preamble.
