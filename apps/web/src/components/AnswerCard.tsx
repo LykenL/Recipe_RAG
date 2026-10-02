@@ -21,8 +21,11 @@ const LIST_LINE = /^\s*([-*+]|\d+[.)])\s+/
  * line is more reliable than asking the model to remember every time.
  */
 function normalizeMarkdown(md: string): string {
+  // Models occasionally narrate formatting instead of applying it, e.g. writing
+  // the literal text "(blank line)". It is never legitimate recipe content.
+  const cleaned = md.replace(/\(blank lines?\)/gi, '').replace(/[ \t]+\n/g, '\n')
   const out: string[] = []
-  for (const line of md.split('\n')) {
+  for (const line of cleaned.split('\n')) {
     const prev = out[out.length - 1]
     if (LIST_LINE.test(line) && prev && prev.trim() !== '' && !LIST_LINE.test(prev)) {
       out.push('')
