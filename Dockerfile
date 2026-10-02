@@ -32,11 +32,11 @@ print('model baked, dim =', np.asarray(v[0]).shape[0])"
 COPY recipe_rag/ ./recipe_rag/
 COPY services/ ./services/
 COPY artifacts/ ./artifacts/
-
-# NOTE: no `COPY apps/`. That directory does not exist yet, and a COPY of a
-# missing path fails the whole build. When you build the React frontend, add:
-#     COPY apps/web/dist/ ./apps/web/dist/
-# The service already mounts apps/web/dist automatically when it is present.
+# Prebuilt React app. Committed rather than compiled here on purpose: a Node
+# build stage would add 1-2 minutes and an npm-registry dependency to every
+# deploy, and the bundle is only ~420KB. Rebuild with:
+#     cd apps/web && npm install && npm run build
+COPY apps/web/dist/ ./apps/web/dist/
 
 EXPOSE 8000
 

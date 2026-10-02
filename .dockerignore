@@ -37,6 +37,11 @@ venv/
 .git/
 .gitignore
 
+# node
+**/node_modules/
+**/.npm-cache/
+**/.vite/
+
 # Local build venv: 386MB, and a root-only ".venv/" pattern does NOT match
 # nested paths — this must be "**/" prefixed or it ships inside the image.
 **/.venv*/

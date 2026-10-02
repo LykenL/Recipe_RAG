@@ -18,3 +18,14 @@ venv/
 
 # Nested course git repos
 **/.git/
+
+# local index-build venv + baked model cache
+.venv*/
+.fastembed/
+
+# node
+node_modules/
+**/.npm-cache/
+
+# local build staging (venv, node_modules, duplicate artifacts)
+recipe_rag/redesign/impl/
