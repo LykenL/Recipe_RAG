@@ -1,0 +1,48 @@
+# Keep the Docker build context small and avoid leaking secrets.
+#
+# The repo root has ~850KB of base64 background image, four weeks of course
+# material, and nested git repos. None of it belongs in the API image.
+
+# secrets
+.env
+*.env
+.streamlit/
+
+# course material / unrelated projects
+week_1/
+week_2/
+week_3/
+week_4/
+COLX_563_adv-semantics_students/
+cloudflare-worker/
+launchd/
+
+# scratch and tests
+scratch*.py
+test_*.py
+tests/
+*.md
+
+# the old Streamlit-only assets
+bg_b64.txt
+*.png
+
+# python / tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+.git/
+.gitignore
+
+# Local build venv: 386MB, and a root-only ".venv/" pattern does NOT match
+# nested paths — this must be "**/" prefixed or it ships inside the image.
+**/.venv*/
+**/.fastembed/
+
+# Design/redesign staging (mockups, screenshots, local build scripts)
+recipe_rag/redesign/
+
+# keep: recipe_rag/ services/ artifacts/ apps/ requirements.txt Dockerfile

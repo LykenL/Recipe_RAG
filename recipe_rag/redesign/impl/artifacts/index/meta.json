@@ -1,0 +1,8 @@
+{
+  "format_version": 1,
+  "count": 829,
+  "dim": 384,
+  "model": "sentence-transformers/all-MiniLM-L6-v2",
+  "backend": "fastembed",
+  "recipes_file": "recipe_rag/redesign/impl/artifacts/recipes_all.json"
+}

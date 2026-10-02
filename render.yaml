@@ -1,0 +1,38 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# Deploy: push this repo, then Render Dashboard -> New -> Blueprint -> pick repo.
+# Only OPENAI_API (marked sync:false) needs to be typed in by hand.
+
+services:
+  - type: web
+    name: recipe-rag-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free            # 0.1 CPU / 512 MB — the reason this image has no torch
+    region: oregon
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      # --- LLM (OpenAI-compatible) ---
+      - key: OPENAI_API          # your key; never commit it
+        sync: false
+      - key: OPENAI_BASE_URL
+        value: https://integrate.api.nvidia.com/v1
+      # meta/llama-3.1-70b-instruct was retired 2026-08-26.
+      # Tested working with tool calling on this account (see notes below):
+      #   nvidia/nemotron-3-super-120b-a12b   ~25s, correctly grounded  <- default
+      #   z-ai/glm-5.3-flash                  ~64s
+      #   openai/gpt-oss-20b                  ~10s but does not terminate cleanly
+      # Everything else returned "Function ... Not found for account".
+      - key: OPENAI_MODEL
+        value: nvidia/nemotron-3-super-120b-a12b
+
+      # --- retrieval ---
+      - key: EMBEDDING_BACKEND
+        value: fastembed
+      - key: ANSWER_MODE
+        value: grounded          # set to "creative" to allow improvised recipes
+      - key: MAX_ITERATIONS
+        value: "3"               # each round is another model call; 5 was too many
+      - key: ALLOWED_ORIGINS
+        value: "*"               # tighten to your frontend origin once it exists

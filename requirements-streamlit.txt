@@ -1,0 +1,4 @@
+# Dependencies for the original Streamlit UI only.
+# pip install -r requirements.txt -r requirements-streamlit.txt
+streamlit>=1.32
+sentence-transformers>=3.0   # pulls in torch; not used by the API

@@ -5,7 +5,6 @@ from typing import Any
 import re
 
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
 
 
 def normalize(text: str) -> str:
@@ -13,10 +12,33 @@ def normalize(text: str) -> str:
 
 
 def _coerce_embedding(arr: Any) -> np.ndarray:
-    emb = np.asarray(arr)
+    emb = np.asarray(arr, dtype=np.float32)
     if emb.ndim == 2 and emb.shape[0] == 1:
         emb = emb[0]
     return emb
+
+
+def embedding_matrix(vector_store: list[dict[str, Any]]) -> np.ndarray:
+    """Stack every entry's embedding into one (N, D) matrix.
+
+    Cache the result and pass it back in via ``matrix=`` — recomputing it per
+    query is wasted work once the store stops being tiny.
+    """
+    if not vector_store:
+        return np.zeros((0, 0), dtype=np.float32)
+    return np.vstack([_coerce_embedding(e["embedding"]).reshape(1, -1) for e in vector_store]).astype(
+        np.float32
+    )
+
+
+def _cosine_scores(query_vec: np.ndarray, matrix: np.ndarray) -> np.ndarray:
+    """Cosine similarity of one query against every row. Replaces sklearn."""
+    if matrix.size == 0:
+        return np.zeros((0,), dtype=np.float32)
+    q = query_vec.reshape(-1).astype(np.float32)
+    q_norm = np.linalg.norm(q) + 1e-12
+    row_norms = np.linalg.norm(matrix, axis=1) + 1e-12
+    return (matrix @ q) / (row_norms * q_norm)
 
 
 def _entry_title(entry: dict[str, Any]) -> str:
@@ -46,9 +68,10 @@ def _rank_entries(
     *,
     k: int = 3,
     min_similarity: float = 0.2,
+    matrix: np.ndarray | None = None,
 ) -> tuple[str | None, list[tuple[float, dict[str, Any]]]]:
     query = (query or "").strip()
-    if not query:
+    if not query or not vector_store:
         return None, []
 
     original_query = query
@@ -62,20 +85,23 @@ def _rank_entries(
             break
 
     query_embedding = _coerce_embedding(embedder.encode(clean_query))
-    scored_results: list[tuple[float, dict[str, Any]]] = []
-    for entry in vector_store:
-        similarity = cosine_similarity(
-            [query_embedding],
-            [_coerce_embedding(entry["embedding"])],
-        )[0][0]
-        scored_results.append((float(similarity), entry))
+    if matrix is None:
+        matrix = embedding_matrix(vector_store)
+    scores = _cosine_scores(query_embedding, matrix)
 
-    scored_results.sort(key=lambda x: x[0], reverse=True)
-    top_results = scored_results[: max(0, int(k))]
-    if not top_results or top_results[0][0] < float(min_similarity):
+    top_k = max(0, int(k))
+    if scores.size == 0 or top_k == 0:
+        return attribute, []
+    top_idx = np.argsort(-scores)[:top_k]
+
+    if float(scores[top_idx[0]]) < float(min_similarity):
         return attribute, []
 
-    filtered = [(score, entry) for score, entry in top_results if score >= float(min_similarity)]
+    filtered = [
+        (float(scores[i]), vector_store[int(i)])
+        for i in top_idx
+        if float(scores[i]) >= float(min_similarity)
+    ]
     return attribute, filtered
 
 
@@ -83,6 +109,14 @@ def _rank_entries(
 class RetrievalResult:
     blocks: list[str]
     hits: list[tuple[float, dict[str, Any]]]
+
+
+_ATTRIBUTE_KEY_MAP = {
+    "serving size": "serving_size",
+    "ingredients": "ingredients",
+    "instructions": "instructions",
+    "notes": "notes",
+}
 
 
 def search_for_prompt(
@@ -93,10 +127,11 @@ def search_for_prompt(
     k: int = 3,
     min_similarity: float = 0.2,
     max_chars_per_entry: int = 520,
+    matrix: np.ndarray | None = None,
     verbose: bool = False,
 ) -> RetrievalResult:
     attribute, filtered = _rank_entries(
-        embedder, vector_store, query, k=k, min_similarity=min_similarity
+        embedder, vector_store, query, k=k, min_similarity=min_similarity, matrix=matrix
     )
     if not filtered:
         return RetrievalResult(blocks=["No matching documents!"], hits=[])
@@ -104,13 +139,7 @@ def search_for_prompt(
     blocks: list[str] = []
     for score, entry in filtered:
         if attribute:
-            attribute_key_map = {
-                "serving size": "serving_size",
-                "ingredients": "ingredients",
-                "instructions": "instructions",
-                "notes": "notes",
-            }
-            metadata_key = attribute_key_map.get(attribute, attribute)
+            metadata_key = _ATTRIBUTE_KEY_MAP.get(attribute, attribute)
             val = entry.get("metadata", {}).get(metadata_key, "Attribute not found")
             blocks.append(f"【{_entry_title(entry)}】\n{val}")
         else:
@@ -127,28 +156,22 @@ def search(
     *,
     k: int = 3,
     min_similarity: float = 0.2,
+    matrix: np.ndarray | None = None,
     verbose: bool = False,
 ) -> list[Any]:
     attribute, filtered = _rank_entries(
-        embedder, vector_store, query, k=k, min_similarity=min_similarity
+        embedder, vector_store, query, k=k, min_similarity=min_similarity, matrix=matrix
     )
     if not filtered:
         return ["No matching documents!"]
 
-    attribute_key_map = {
-        "serving size": "serving_size",
-        "ingredients": "ingredients",
-        "instructions": "instructions",
-        "notes": "notes",
-    }
     results: list[Any] = []
     for score, entry in filtered:
         if attribute:
-            metadata_key = attribute_key_map.get(attribute, attribute)
+            metadata_key = _ATTRIBUTE_KEY_MAP.get(attribute, attribute)
             results.append(entry.get("metadata", {}).get(metadata_key, "Attribute not found"))
         else:
             results.append(entry["text"])
         if verbose:
             print(f"similarity={score:.3f} | {_entry_title(entry)}")
     return results if results else ["No matching documents!"]
-
