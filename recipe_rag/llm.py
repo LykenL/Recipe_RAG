@@ -73,12 +73,24 @@ class LLMClient:
         max_iterations: int = 5,
         max_tokens: int = 400,
     ) -> Iterator[str]:
-        """ReAct-style loop over native tool calling. Yields assistant text as it streams."""
+        """ReAct-style loop over native tool calling. Yields assistant text as it streams.
+
+        The final round is run with tools withheld. Reasoning models such as
+        nvidia/nemotron-3-super will otherwise call the tool on every single
+        iteration — observed: 3 rounds, 3 tool calls, zero answer text, because
+        the model streams its deliberation into `reasoning_content` and never
+        commits to an answer. Forcing one tool-free round guarantees the user
+        gets prose instead of an empty card citing real sources.
+        """
         import json
 
         messages = self._build_messages(system_prompt, user_query, history)
+        answer_text = ""
 
-        for _ in range(max_iterations):
+        for iteration in range(max_iterations):
+            is_final = iteration == max_iterations - 1
+            use_tools = bool(tools) and self.supports_tools and not is_final
+
             kwargs: dict[str, Any] = {
                 "model": self.model,
                 "messages": messages,
@@ -86,16 +98,24 @@ class LLMClient:
                 "temperature": self.temperature,
                 "stream": True,
             }
-            use_tools = bool(tools) and self.supports_tools
             if use_tools:
                 kwargs["tools"] = tools
                 kwargs["tool_choice"] = "auto"
+            elif is_final and answer_text.strip() == "" and messages:
+                # nudge: stop researching and write the answer from what we have
+                messages = messages + [
+                    {
+                        "role": "user",
+                        "content": (
+                            "Now answer the question using only the passages above. "
+                            "Do not request any more searches."
+                        ),
+                    }
+                ]
 
             try:
                 response = self.client.chat.completions.create(**kwargs)
             except Exception as exc:
-                # Some OpenAI-compatible endpoints reject `tools` outright.
-                # Degrade to a plain completion instead of failing the request.
                 lowered = str(exc).lower()
                 if use_tools and any(m in lowered for m in _TOOL_UNSUPPORTED_MARKERS):
                     self.supports_tools = False
@@ -112,11 +132,18 @@ class LLMClient:
 
             tool_calls: list[dict[str, Any]] = []
             full_content = ""
+            reasoning_chars = 0
 
             for chunk in response:
                 if not chunk.choices:
                     continue
                 delta = chunk.choices[0].delta
+
+                # Reasoning models emit deliberation here. It is not the answer,
+                # but tracking the volume distinguishes "model was cut off mid
+                # thought" from "model returned nothing at all".
+                if getattr(delta, "reasoning_content", None):
+                    reasoning_chars += len(delta.reasoning_content)
 
                 if getattr(delta, "tool_calls", None):
                     for tc in delta.tool_calls:
@@ -137,18 +164,18 @@ class LLMClient:
 
                 if delta.content:
                     full_content += delta.content
+                    answer_text += delta.content
                     yield delta.content
 
             # No tools requested -> the text we just streamed is the final answer.
             if not tool_calls:
-                return
+                if full_content.strip():
+                    return
+                # Model returned an empty turn with no tool call: nothing to add.
+                break
 
             messages.append(
-                {
-                    "role": "assistant",
-                    "content": full_content or "",
-                    "tool_calls": tool_calls,
-                }
+                {"role": "assistant", "content": full_content or "", "tool_calls": tool_calls}
             )
 
             for tool_call in tool_calls:
@@ -170,4 +197,16 @@ class LLMClient:
                     }
                 )
 
-        yield "\n\n⚠️ Agent stopped: Reached maximum thinking steps."
+            if is_final and reasoning_chars and not full_content.strip():
+                yield (
+                    "\n\n⚠️ The model spent its whole response budget on internal reasoning "
+                    "and never wrote an answer. Try rephrasing, or switch OPENAI_MODEL to a "
+                    "non-reasoning model."
+                )
+                return
+
+        if not answer_text.strip():
+            yield (
+                "\n\n⚠️ The model did not produce an answer within the step limit. "
+                "Try rephrasing the question."
+            )

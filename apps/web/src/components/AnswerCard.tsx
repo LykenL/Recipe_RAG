@@ -106,13 +106,18 @@ export function AnswerCard({ content, sources, done, error, pending }: Props) {
     }
   }
 
-  if (error && !content) {
+  if ((error || !content.trim()) && !pending) {
+    // An empty answer with real sources is worse than an error: the footer would
+    // claim "grounded in N sources" over a blank card. Say what happened instead.
     return (
       <div className="answer">
         <div className="ans-body">
           <div className="copy-error" style={{ margin: 0 }}>
             <Warn width={16} height={16} style={{ flex: 'none' }} />
-            <span>{error}</span>
+            <span>
+              {error ??
+                'The model returned no answer this time. This usually means it used its whole budget on internal reasoning — ask again, or rephrase the question.'}
+            </span>
           </div>
         </div>
       </div>

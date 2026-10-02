@@ -191,7 +191,9 @@ class RecipeRAGAssistant:
             tool_handlers=tool_handlers,
             history=history,
             max_iterations=self.max_iterations,
-            max_tokens=2048,
+            # Reasoning models bill deliberation against this budget; leave room
+            # for the actual answer on top of it.
+            max_tokens=4096,
         )
 
     # Provide a route alias to avoid immediately breaking UI/evaluators that still call .route()
