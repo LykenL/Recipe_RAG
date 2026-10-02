@@ -18,14 +18,16 @@ services:
         sync: false
       - key: OPENAI_BASE_URL
         value: https://integrate.api.nvidia.com/v1
-      # meta/llama-3.1-70b-instruct was retired 2026-08-26.
-      # Tested working with tool calling on this account (see notes below):
-      #   nvidia/nemotron-3-super-120b-a12b   ~25s, correctly grounded  <- default
-      #   z-ai/glm-5.3-flash                  ~64s
-      #   openai/gpt-oss-20b                  ~10s but does not terminate cleanly
+      # Model must support tool calling on your account. Measured end-to-end
+      # on this corpus (free tier, same API key — only this value changes):
+      #   openai/gpt-oss-20b                  1-13s   correct, terminates   <- default
+      #   nvidia/nemotron-3-super-120b-a12b  17-58s   reasoning model, erratic
+      #   z-ai/glm-5.3-flash                   64s
+      #   z-ai/glm-5.3                        221s
+      #   google/gemma-4-31b-it               722s    effectively unusable
       # Everything else returned "Function ... Not found for account".
       - key: OPENAI_MODEL
-        value: nvidia/nemotron-3-super-120b-a12b
+        value: openai/gpt-oss-20b
 
       # --- retrieval ---
       - key: EMBEDDING_BACKEND
