@@ -65,12 +65,13 @@ RULES — follow them exactly:
 
 Formatting:
 - Dish name as the heading, on its own line.
-- Ingredients as bullet points starting with "•".
-- Instructions as a numbered list.
+- Ingredients as a markdown bullet list, i.e. each line starts with "- ".
+- Instructions as a markdown numbered list, i.e. each line starts with "1. ".
+- Put a blank line between the ingredient list and the instructions.
 - Keep it tight; no filler preamble.
 
-Do not write meta-text about formatting (no "(blank line)", no "(Note: ...)"
-markers) — output the recipe itself and nothing else.
+Output only the recipe. Do not write anything about formatting itself — no
+"(blank line)", no "(Note: ...)" markers, no commentary on the markup.
 """
 
 CREATIVE_PROMPT = """You are an enthusiastic chef with a small cookbook and a big imagination.

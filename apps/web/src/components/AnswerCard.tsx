@@ -13,19 +13,25 @@ interface Props {
 }
 
 const LIST_LINE = /^\s*([-*+]|\d+[.)])\s+/
+/** Models like to emit a literal bullet glyph instead of markdown "- ". */
+const BULLET_GLYPH = /^\s*[•·‣▪●]\s*/
 
 /**
- * Markdown requires a blank line before a list. Models routinely emit
- * "**Ingredients**\n- 2 Lbs Chicken Wings", which CommonMark renders as one
- * paragraph ("Ingredients • 2 Lbs Chicken Wings"). Inserting the missing blank
- * line is more reliable than asking the model to remember every time.
+ * Make model output render predictably. Two real failure modes seen in
+ * production, both of which are more reliably fixed here than by asking the
+ * model to remember:
+ *
+ *   1. "**Ingredients**\n- item" — no blank line before a list, so CommonMark
+ *      renders one paragraph ("Ingredients • 2 Lbs Chicken Wings").
+ *   2. "• item" — a literal bullet glyph is not a list marker to CommonMark.
+ *   3. "(blank line)" — narrating formatting instead of applying it.
  */
 function normalizeMarkdown(md: string): string {
-  // Models occasionally narrate formatting instead of applying it, e.g. writing
-  // the literal text "(blank line)". It is never legitimate recipe content.
-  const cleaned = md.replace(/\(blank lines?\)/gi, '').replace(/[ \t]+\n/g, '\n')
+  const cleaned = md.replace(/\(blank lines?\)/gi, '').replace(/[ \t]+$/gm, '')
   const out: string[] = []
-  for (const line of cleaned.split('\n')) {
+
+  for (const raw of cleaned.split('\n')) {
+    const line = BULLET_GLYPH.test(raw) ? raw.replace(BULLET_GLYPH, '- ') : raw
     const prev = out[out.length - 1]
     if (LIST_LINE.test(line) && prev && prev.trim() !== '' && !LIST_LINE.test(prev)) {
       out.push('')
@@ -36,9 +42,10 @@ function normalizeMarkdown(md: string): string {
 }
 
 /**
- * The model answers in markdown whose first line is the dish name, either as a
- * heading (`## X`) or as a bold line (`**X**`). Pulling it out lets the card use
- * the display serif for the title instead of a bold paragraph.
+ * The dish name is usually the first line, as a heading (`## X`), a bold line
+ * (`**X**`), or — when the model ignores both — a bare short line immediately
+ * followed by the ingredient list. Lifting it out lets the card set the title in
+ * the display serif rather than as a bold paragraph.
  */
 function splitTitle(markdown: string): { title?: string; body: string; improvised: boolean } {
   let body = markdown.trim()
@@ -57,12 +64,23 @@ function splitTitle(markdown: string): { title?: string; body: string; improvise
 
   if (i < lines.length) {
     const line = lines[i].trim()
-    const candidate =
+    const explicit =
       line.match(/^#{1,4}\s+(.+)$/)?.[1] ??
       line.match(/^\*\*(.+?)\*\*:?$/)?.[1] ??
       line.match(/^__(.+?)__:?$/)?.[1]
 
-    if (candidate && candidate.length <= 90) {
+    // bare title heuristic: short line, no terminal punctuation, list follows.
+    // Skip intervening blank lines — normalisation inserts one before the list.
+    let j = i + 1
+    while (j < lines.length && !lines[j].trim()) j += 1
+    const next = lines[j]?.trim() ?? ''
+    const bare =
+      !explicit && line.length <= 70 && !/[.:;!?]$/.test(line) && LIST_LINE.test(next)
+        ? line
+        : undefined
+
+    const candidate = explicit ?? bare
+    if (candidate) {
       return {
         title: candidate.replace(/[*_`]/g, '').trim(),
         body: lines.slice(i + 1).join('\n').trim(),
@@ -75,8 +93,8 @@ function splitTitle(markdown: string): { title?: string; body: string; improvise
 
 export function AnswerCard({ content, sources, done, error, pending }: Props) {
   const [copied, setCopied] = useState(false)
-  const { title, body, improvised } = splitTitle(content)
-  const rendered = normalizeMarkdown(body || content)
+  const { title, body, improvised } = splitTitle(normalizeMarkdown(content))
+  const rendered = body
 
   const copy = async () => {
     try {
