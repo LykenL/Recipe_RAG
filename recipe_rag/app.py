@@ -23,7 +23,7 @@ DEFAULT_MIN_SIMILARITY = 0.35
 #: Each extra round is another model call, which dominates latency. Two or three
 #: is enough for "search, maybe rephrase, then answer"; five was the old default
 #: and produced four searches for a single simple question.
-DEFAULT_MAX_ITERATIONS = int(os.getenv("MAX_ITERATIONS", "3"))
+DEFAULT_MAX_ITERATIONS = int(os.getenv("MAX_ITERATIONS", "4"))
 
 # Used only when an index predates model metadata (legacy .emb pickle).
 _LEGACY_MODEL = "all-MiniLM-L6-v2"

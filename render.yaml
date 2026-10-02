@@ -33,6 +33,6 @@ services:
       - key: ANSWER_MODE
         value: grounded          # set to "creative" to allow improvised recipes
       - key: MAX_ITERATIONS
-        value: "3"               # each round is another model call; 5 was too many
+        value: "4"               # each round is another model call; 3 was too few and looped out
       - key: ALLOWED_ORIGINS
         value: "*"               # tighten to your frontend origin once it exists
