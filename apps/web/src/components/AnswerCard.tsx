@@ -231,9 +231,14 @@ export function AnswerCard({
 
   // Restrictions are *checked*, not enforced: nothing was removed from
   // retrieval, so the wording must never imply that it was.
+  //
+  // Only checked when there are sources, i.e. an actual cookbook recipe came
+  // back. Without that guard a refusal ("I can't give you a dessert with nuts
+  // because you have a nut allergy") trips the warning on its own wording —
+  // warning the reader about the very restriction that caused the refusal.
   const conflicts = useMemo(
-    () => (pending ? [] : findConflicts(rendered, dietary)),
-    [rendered, dietary, pending],
+    () => (pending || sources.length === 0 ? [] : findConflicts(rendered, dietary)),
+    [rendered, dietary, pending, sources.length],
   )
 
   const haveCount = useMemo(() => {
