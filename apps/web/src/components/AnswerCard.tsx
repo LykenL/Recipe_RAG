@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { createContext, useContext, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { DonePayload, Source } from '../lib/types'
@@ -10,6 +11,8 @@ interface Props {
   done?: DonePayload
   error?: string
   pending: boolean
+  /** ingredients the user said they have, matched against the ingredient list */
+  pantry?: string[]
 }
 
 const LIST_LINE = /^\s*([-*+]|\d+[.)])\s+/
@@ -103,6 +106,54 @@ function splitTitle(markdown: string): { title?: string; body: string; improvise
   return { body, improvised }
 }
 
+const FRACTIONS: Record<string, string> = {
+  '1/2': '½', '1/4': '¼', '3/4': '¾', '1/3': '⅓', '2/3': '⅔',
+  '1/8': '⅛', '3/8': '⅜', '5/8': '⅝', '7/8': '⅞',
+}
+
+/**
+ * "1 1/2 cup" -> "1½ cup". Recipes are full of these and the slash form is a
+ * typographic tell that nobody proofed the output.
+ */
+export function prettyFractions(md: string): string {
+  let out = md
+  for (const [k, v] of Object.entries(FRACTIONS)) {
+    const esc = k.replace('/', '\\/')
+    out = out.replace(new RegExp(`(\\d)\\s+${esc}(?![\\d/])`, 'g'), `$1${v}`)   // mixed number
+    out = out.replace(new RegExp(`(?<![\\d/])${esc}(?![\\d/])`, 'g'), v)         // bare fraction
+  }
+  return out
+}
+
+/** True when `line` is a bullet item, i.e. an ingredient rather than a step. */
+const BULLET_ITEM = /^\s*[-*+]\s+/
+
+/** Which pantry item this line names, if any. Word-boundary matched so that
+ *  "egg" does not match "eggplant". */
+export function pantryHit(text: string, pantry: string[]): string | null {
+  if (!pantry.length) return null
+  const haystack = ` ${text.toLowerCase()} `
+  for (const raw of pantry) {
+    const key = raw.toLowerCase().trim()
+    if (key.length < 3) continue
+    const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    if (new RegExp(`[^a-z]${escaped}[^a-z]`).test(haystack)) return raw
+  }
+  return null
+}
+
+/** Flatten react-markdown's children back to plain text. */
+function nodeText(node: ReactNode): string {
+  if (node == null || typeof node === 'boolean') return ''
+  if (typeof node === 'string' || typeof node === 'number') return String(node)
+  if (Array.isArray(node)) return node.map(nodeText).join('')
+  const props = (node as { props?: { children?: ReactNode } }).props
+  return props?.children ? nodeText(props.children) : ''
+}
+
+/** Set while rendering inside a <ul>, so only ingredient bullets get chips. */
+const InBulletList = createContext(false)
+
 const normaliseTitle = (s: string) =>
   s
     .toLowerCase()
@@ -135,10 +186,48 @@ function heroImage(title: string | undefined, sources: Source[]): string {
   return partial?.image ?? ''
 }
 
-export function AnswerCard({ content, sources, done, error, pending }: Props) {
+export function AnswerCard({
+  content,
+  sources,
+  done,
+  error,
+  pending,
+  pantry = [],
+}: Props) {
   const [copied, setCopied] = useState(false)
   const { title, body, improvised } = splitTitle(normalizeMarkdown(content))
-  const rendered = body
+  const rendered = prettyFractions(body)
+
+  // Only bullets get pantry chips. Numbered lists are method steps, where
+  // "add the chicken" would otherwise look like a pantry claim.
+  const mdComponents = useMemo(
+    () => ({
+      ul: ({ children }: { children?: ReactNode }) => (
+        <ul>
+          <InBulletList.Provider value={true}>{children}</InBulletList.Provider>
+        </ul>
+      ),
+      li: ({ children }: { children?: ReactNode }) => {
+        const inBullets = useContext(InBulletList)
+        const hit = inBullets ? pantryHit(nodeText(children), pantry) : null
+        return (
+          <li>
+            {children}
+            {hit && <span className="ing-have">in pantry</span>}
+          </li>
+        )
+      },
+    }),
+    [pantry],
+  )
+
+  const haveCount = useMemo(() => {
+    if (!pantry.length) return 0
+    return rendered
+      .split('\n')
+      .filter((l) => BULLET_ITEM.test(l) && pantryHit(l, pantry))
+      .length
+  }, [rendered, pantry])
 
   const copy = async () => {
     try {
@@ -203,7 +292,7 @@ export function AnswerCard({ content, sources, done, error, pending }: Props) {
 
       <div className="ans-body">
         <div className="answer-md">
-          <Markdown remarkPlugins={[remarkGfm]}>{rendered}</Markdown>
+          <Markdown remarkPlugins={[remarkGfm]} components={mdComponents}>{rendered}</Markdown>
           {pending && <span className="caret" />}
         </div>
       </div>
@@ -211,6 +300,11 @@ export function AnswerCard({ content, sources, done, error, pending }: Props) {
       {!pending && (
         <div className="ans-foot">
           <span>{citationLabel}</span>
+          {haveCount > 0 && (
+            <span className="act" style={{ background: 'var(--sage-soft)', borderColor: 'var(--sage-line)', color: '#2E6240' }}>
+              {haveCount} in your pantry
+            </span>
+          )}
           {sources.length > 0 && (
             <span className="act" title="Sources are listed in the panel">
               <Book width={12} height={12} /> {sources.length} sources

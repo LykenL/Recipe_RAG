@@ -105,7 +105,7 @@ export default function App() {
             {isEmpty ? (
               <EmptyState onSend={handleSend} onStop={stop} streaming={streaming} tags={tags} />
             ) : (
-              <ChatThread messages={messages} />
+              <ChatThread messages={messages} pantry={settings.pantry} />
             )}
           </div>
         </div>

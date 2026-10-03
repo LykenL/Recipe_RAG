@@ -4,9 +4,10 @@ import { AnswerCard } from './AnswerCard'
 
 interface Props {
   messages: Message[]
+  pantry?: string[]
 }
 
-export function ChatThread({ messages }: Props) {
+export function ChatThread({ messages, pantry = [] }: Props) {
   return (
     <div className="thread">
       {messages.map((m) => {
@@ -31,6 +32,7 @@ export function ChatThread({ messages }: Props) {
                 done={m.done}
                 error={m.error}
                 pending={Boolean(m.pending)}
+                pantry={pantry}
               />
             )}
           </div>
