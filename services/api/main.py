@@ -80,10 +80,12 @@ def _touch_llm() -> tuple[bool, int, str]:
     started = time.perf_counter()
     try:
         reply = assistant.llm.chat("Reply with the single word: ready", max_tokens=24)
-        # An empty reply is still a successful round trip: the connection is
-        # warm and the credentials are accepted. Reasoning models routinely
-        # spend a small budget on deliberation and return no visible text.
-        return True, int((time.perf_counter() - started) * 1000), "" if reply else "(empty reply)"
+        # An empty reply is still a successful round trip: the connection is warm
+        # and the credentials were accepted. Reasoning models routinely spend a
+        # small budget on deliberation and return no visible text, so this is
+        # reported as a note, never as an error.
+        note = "" if reply else "empty reply (normal for reasoning models)"
+        return True, int((time.perf_counter() - started) * 1000), note
     except Exception as exc:
         return False, int((time.perf_counter() - started) * 1000), str(exc)[:300]
 
