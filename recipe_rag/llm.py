@@ -43,7 +43,10 @@ class LLMClient:
             max_tokens=max_tokens,
             temperature=self.temperature,
         )
-        return resp.choices[0].message.content.strip()
+        # Reasoning models return content=None when the budget is spent on
+        # deliberation, so this must not assume a string.
+        message = resp.choices[0].message
+        return (message.content or "").strip()
 
     # ── agent loop ───────────────────────────────────────────────────────────
     def _build_messages(

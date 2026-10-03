@@ -26,6 +26,7 @@ import copy
 import json
 import os
 import random
+import threading
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -61,13 +62,58 @@ def get_assistant():
     return _assistant
 
 
+#: Set WARMUP=0 to skip the one-token model call made at boot.
+WARMUP_ENABLED = os.getenv("WARMUP", "1").strip().lower() not in {"0", "false", "no"}
+
+_warm_state: dict[str, Any] = {"llm_ok": None, "llm_ms": None, "error": None, "at": None}
+
+
+def _touch_llm() -> tuple[bool, int, str]:
+    """Make the cheapest possible call to the chat model.
+
+    Two things get paid for here instead of on the user's first question: the
+    DNS + TLS + connection setup to the provider, and finding out early that the
+    key or model name is wrong. It does *not* reduce the provider's queueing
+    delay — that is remote and out of our hands.
+    """
+    assistant = get_assistant()
+    started = time.perf_counter()
+    try:
+        reply = assistant.llm.chat("Reply with the single word: ready", max_tokens=24)
+        # An empty reply is still a successful round trip: the connection is
+        # warm and the credentials are accepted. Reasoning models routinely
+        # spend a small budget on deliberation and return no visible text.
+        return True, int((time.perf_counter() - started) * 1000), "" if reply else "(empty reply)"
+    except Exception as exc:
+        return False, int((time.perf_counter() - started) * 1000), str(exc)[:300]
+
+
+def _warm_llm_in_background() -> None:
+    """Run the warm-up off the startup path.
+
+    Awaiting it in lifespan would delay the port binding, and Render's health
+    check would then see a slower boot than necessary.
+    """
+    ok, ms, err = _touch_llm()
+    _warm_state.update(llm_ok=ok, llm_ms=ms, error=err or None, at=time.time())
+    if ok:
+        print(f"[warmup] chat model responded in {ms} ms", flush=True)
+    else:
+        print(f"[warmup] chat model FAILED after {ms} ms: {err}", flush=True)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    # Warm the model at boot so the first user request is not the one paying for it.
+    # Blocking part: the embedding model and index. The service is not really up
+    # until this succeeds, so /healthz has to reflect it.
     try:
         get_assistant()
-    except Exception as exc:  # keep the service up so /healthz can report the problem
+        print("[startup] index and embedder ready", flush=True)
+    except Exception as exc:  # stay up so /healthz can report the problem
         print(f"[startup] assistant failed to load: {exc}", flush=True)
+
+    if WARMUP_ENABLED:
+        threading.Thread(target=_warm_llm_in_background, name="warmup", daemon=True).start()
     yield
 
 
@@ -230,6 +276,8 @@ def healthz() -> dict[str, Any]:
         "recipes": assistant.index_meta.get("count"),
         "model": assistant.index_meta.get("model"),
         "backend": assistant.index_meta.get("backend"),
+        # null while the background warm-up is still in flight
+        "llm_warm": _warm_state["llm_ok"],
     }
 
 
@@ -240,6 +288,35 @@ def index_info() -> dict[str, Any]:
         **assistant.index_meta,
         "k": assistant.k,
         "min_similarity": assistant.min_similarity,
+    }
+
+
+@app.get("/warmup")
+def warmup() -> dict[str, Any]:
+    """Force a full warm-up. Hit this shortly before demoing.
+
+    On a free instance the container is evicted after ~15 minutes idle, so the
+    next request pays the whole boot. Calling this from a browser tab, a cron
+    job or an uptime pinger means that cost lands on nobody's first impression.
+    """
+    started = time.perf_counter()
+    try:
+        assistant = get_assistant()
+    except Exception as exc:
+        return {"ready": False, "error": str(exc)}
+
+    index_ms = int((time.perf_counter() - started) * 1000)
+    ok, llm_ms, err = _touch_llm()
+    _warm_state.update(llm_ok=ok, llm_ms=llm_ms, error=err or None, at=time.time())
+
+    return {
+        "ready": ok,
+        "index_ms": index_ms,
+        "llm_ok": ok,
+        "llm_ms": llm_ms,
+        "model": assistant.llm.model,
+        "recipes": assistant.index_meta.get("count"),
+        "error": err or None,
     }
 
 
