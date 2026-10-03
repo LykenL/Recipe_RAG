@@ -3,7 +3,8 @@ import type { ReactNode } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { DonePayload, Source } from '../lib/types'
-import { Book, Check, Copy, Sparkle, Warn } from './icons'
+import { findConflicts } from '../lib/restrictions'
+import { Shield, Book, Check, Copy, Printer, Sparkle, Warn } from './icons'
 
 interface Props {
   content: string
@@ -13,6 +14,8 @@ interface Props {
   pending: boolean
   /** ingredients the user said they have, matched against the ingredient list */
   pantry?: string[]
+  /** dietary settings this answer was asked under */
+  dietary?: string[]
 }
 
 const LIST_LINE = /^\s*([-*+]|\d+[.)])\s+/
@@ -87,9 +90,13 @@ function splitTitle(markdown: string): { title?: string; body: string; improvise
         break
       }
     }
+    // Word count is a weak proxy for "this is a name, not a sentence": real
+    // dish names run long ("Chicken in Orange Sauce Recipe (Pollo a la Naranja)"
+    // is 8 words). The terminal-punctuation and sentence-starter checks do the
+    // real work of keeping prose out.
     const looksLikeName =
-      line.length <= 60 &&
-      line.split(/\s+/).length <= 6 &&
+      line.length <= 64 &&
+      line.split(/\s+/).length <= 10 &&
       !/[.:;!?]$/.test(line) &&
       !SENTENCE_START.test(line)
     const bare = !explicit && looksLikeName && listWithin3 ? line : undefined
@@ -193,6 +200,7 @@ export function AnswerCard({
   error,
   pending,
   pantry = [],
+  dietary = [],
 }: Props) {
   const [copied, setCopied] = useState(false)
   const { title, body, improvised } = splitTitle(normalizeMarkdown(content))
@@ -219,6 +227,13 @@ export function AnswerCard({
       },
     }),
     [pantry],
+  )
+
+  // Restrictions are *checked*, not enforced: nothing was removed from
+  // retrieval, so the wording must never imply that it was.
+  const conflicts = useMemo(
+    () => (pending ? [] : findConflicts(rendered, dietary)),
+    [rendered, dietary, pending],
   )
 
   const haveCount = useMemo(() => {
@@ -291,10 +306,25 @@ export function AnswerCard({
       </div>
 
       <div className="ans-body">
+        {conflicts.length > 0 && (
+          <div className="conflict">
+            <Shield width={15} height={15} style={{ flex: 'none', marginTop: 1 }} />
+            <span>
+              This answer may conflict with your settings:{' '}
+              {conflicts.map((c) => `${c.restriction} (${c.terms.slice(0, 3).join(', ')})`).join('; ')}.
+              {' '}Ingredients were not filtered — check before cooking.
+            </span>
+          </div>
+        )}
         <div className="answer-md">
           <Markdown remarkPlugins={[remarkGfm]} components={mdComponents}>{rendered}</Markdown>
           {pending && <span className="caret" />}
         </div>
+      </div>
+
+      <div className="print-only print-byline">
+        Mise · recipe assistant{title ? ` · ${title}` : ''}
+        {sources.length > 0 && ` · ${sources.length} cited source${sources.length === 1 ? '' : 's'}`}
       </div>
 
       {!pending && (
@@ -314,6 +344,11 @@ export function AnswerCard({
             onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && copy()}>
             {copied ? <Check width={12} height={12} /> : <Copy width={12} height={12} />}
             {copied ? 'Copied' : 'Copy'}
+          </span>
+          <span className="act" onClick={() => window.print()} role="button" tabIndex={0}
+            title="Print a kitchen-friendly version"
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && window.print()}>
+            <Printer width={12} height={12} /> Print
           </span>
         </div>
       )}

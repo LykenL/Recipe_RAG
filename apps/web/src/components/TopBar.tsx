@@ -6,6 +6,8 @@ interface Props {
   subtitle: string
   info: IndexInfo | null
   online: boolean
+  /** true when the first request has been pending long enough to look stuck */
+  waking: boolean
   sourceCount: number
   onOpenSettings: () => void
   onToggleSources: () => void
@@ -16,6 +18,7 @@ export function TopBar({
   subtitle,
   info,
   online,
+  waking,
   sourceCount,
   onOpenSettings,
   onToggleSources,
@@ -34,9 +37,18 @@ export function TopBar({
       </div>
 
       <div className="tb-right">
-        <span className="pill" title={online ? 'API reachable' : 'API unreachable'}>
-          <span className={`dot${online ? '' : ' bad'}`} />
-          {info ? `${info.count.toLocaleString()} recipes` : 'connecting…'}
+        <span
+          className="pill"
+          title={
+            !online ? 'API unreachable' : waking ? 'Free instance starting up' : 'API reachable'
+          }
+        >
+          <span className={`dot${online ? (waking ? ' busy' : '') : ' bad'}`} />
+          {info
+            ? `${info.count.toLocaleString()} recipes`
+            : waking
+              ? 'waking the server…'
+              : 'connecting…'}
         </span>
         <button className="iconbtn drawer-toggle" onClick={onToggleSources} aria-label="Toggle sources">
           <Book width={15} height={15} />

@@ -5,9 +5,10 @@ import { AnswerCard } from './AnswerCard'
 interface Props {
   messages: Message[]
   pantry?: string[]
+  dietary?: string[]
 }
 
-export function ChatThread({ messages, pantry = [] }: Props) {
+export function ChatThread({ messages, pantry = [], dietary = [] }: Props) {
   return (
     <div className="thread">
       {messages.map((m) => {
@@ -23,7 +24,12 @@ export function ChatThread({ messages, pantry = [] }: Props) {
         return (
           <div key={m.id} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {showTrace && (
-              <AgentTrace steps={m.trace} pending={Boolean(m.pending)} elapsedMs={m.done?.elapsed_ms} />
+              <AgentTrace
+                steps={m.trace}
+                pending={Boolean(m.pending)}
+                elapsedMs={m.done?.elapsed_ms}
+                restrictions={dietary}
+              />
             )}
             {(m.content || m.error || !m.pending) && (
               <AnswerCard
@@ -33,6 +39,7 @@ export function ChatThread({ messages, pantry = [] }: Props) {
                 error={m.error}
                 pending={Boolean(m.pending)}
                 pantry={pantry}
+                dietary={dietary}
               />
             )}
           </div>

@@ -21,6 +21,7 @@ export default function App() {
   const [info, setInfo] = useState<IndexInfo | null>(null)
   const [samples, setSamples] = useState<SampleDish[]>([])
   const [online, setOnline] = useState(true)
+  const [waking, setWaking] = useState(false)
   const [railOpen, setRailOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -43,6 +44,17 @@ export default function App() {
       .catch(() => setSamples([]))
     return () => ctrl.abort()
   }, [])
+
+  // A free Render instance is evicted after ~15 min idle; the next request pays
+  // the whole boot. Say so rather than showing a dead "connecting…".
+  useEffect(() => {
+    if (info) {
+      setWaking(false)
+      return
+    }
+    const t = window.setTimeout(() => setWaking(true), 4000)
+    return () => window.clearTimeout(t)
+  }, [info])
 
   // Swap the transcript when the active conversation changes.
   useEffect(() => {
@@ -122,6 +134,7 @@ export default function App() {
           subtitle={subtitle}
           info={info}
           online={online}
+          waking={waking}
           sourceCount={sources.length}
           onOpenSettings={() => setRailOpen(true)}
           onToggleSources={() => setDrawerOpen((v) => !v)}
@@ -138,7 +151,11 @@ export default function App() {
                 samples={samples}
               />
             ) : (
-              <ChatThread messages={messages} pantry={settings.pantry} />
+              <ChatThread
+                messages={messages}
+                pantry={settings.pantry}
+                dietary={settings.dietary}
+              />
             )}
           </div>
         </div>
@@ -169,6 +186,7 @@ export default function App() {
           info={info}
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}
+          dietary={settings.dietary}
         />
       )}
     </div>

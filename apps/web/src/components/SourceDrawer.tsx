@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { findConflicts, sourceText } from '../lib/restrictions'
 import type { IndexInfo, Source } from '../lib/types'
 import { Book, Chevron, X } from './icons'
 
@@ -7,9 +8,10 @@ interface Props {
   info: IndexInfo | null
   open: boolean
   onClose: () => void
+  dietary?: string[]
 }
 
-export function SourceDrawer({ sources, info, open, onClose }: Props) {
+export function SourceDrawer({ sources, info, open, onClose, dietary = [] }: Props) {
   const [expanded, setExpanded] = useState<Record<number, boolean>>({})
   const best = sources.length > 0 ? Math.max(...sources.map((s) => s.score)) : 1
 
@@ -40,12 +42,13 @@ export function SourceDrawer({ sources, info, open, onClose }: Props) {
             </div>
           ) : (
             sources.map((s, i) => {
+              const flag = findConflicts(sourceText(s.title, s.snippet, s.full_text), dietary)
               const body = s.full_text || s.snippet
               const canExpand = body.length > (s.snippet?.length ?? 0) + 20
               const isOpen = Boolean(expanded[i])
               return (
                 <article
-                  className={`src${canExpand ? ' expandable' : ''}`}
+                  className={`src${canExpand ? ' expandable' : ''}${flag.length ? ' flagged' : ''}`}
                   key={`${s.title}-${i}`}
                   onClick={() => canExpand && setExpanded((p) => ({ ...p, [i]: !p[i] }))}
                   role={canExpand ? 'button' : undefined}
@@ -81,6 +84,11 @@ export function SourceDrawer({ sources, info, open, onClose }: Props) {
                   <div className="bar">
                     <i style={{ width: `${Math.max(6, (s.score / best) * 100)}%` }} />
                   </div>
+                  {flag.length > 0 && (
+                    <div className="src-flag">
+                      May conflict: {flag.map((f) => `${f.restriction} (${f.terms.slice(0, 2).join(', ')})`).join(' · ')}
+                    </div>
+                  )}
                   <p className={isOpen ? 'full' : ''}>{isOpen ? body : body.slice(0, 220)}</p>
                   {canExpand && (
                     <span className="src-toggle">

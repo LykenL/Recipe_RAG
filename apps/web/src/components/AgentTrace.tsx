@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import type { TraceStep } from '../lib/types'
-import { Check, Dots, Filter, Search, Whisk } from './icons'
+import { Check, Dots, Filter, Search, Shield, Whisk } from './icons'
 
 interface Props {
   steps: TraceStep[]
   pending: boolean
   elapsedMs?: number
+  /** the dietary settings this answer was asked under */
+  restrictions?: string[]
 }
 
 /**
@@ -19,7 +21,7 @@ interface Props {
  * anywhere from 10s to over two minutes, and a frozen "Composing…" for that long
  * reads as a hung request.
  */
-export function AgentTrace({ steps, pending, elapsedMs }: Props) {
+export function AgentTrace({ steps, pending, elapsedMs, restrictions = [] }: Props) {
   const [liveSeconds, setLiveSeconds] = useState(0)
 
   useEffect(() => {
@@ -51,6 +53,16 @@ export function AgentTrace({ steps, pending, elapsedMs }: Props) {
           {clock && ` · ${clock}`}
         </span>
       </div>
+
+      {restrictions.length > 0 && (
+        <div className="step">
+          <span className="s-ic" style={{ background: 'var(--terra-soft)', color: 'var(--terra)' }}>
+            <Shield width={11} height={11} />
+          </span>
+          Asked under your restrictions
+          <span className="s-meta">{restrictions.join(' · ')}</span>
+        </div>
+      )}
 
       {steps.map((step, i) => {
         if (step.step === 'search') {

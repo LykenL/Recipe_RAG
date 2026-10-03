@@ -185,6 +185,7 @@ input, textarea, select { font: inherit; color: inherit; }
 }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: #5fbf7b; box-shadow: 0 0 0 3px rgba(95, 191, 123, 0.2); }
 .dot.bad { background: var(--terra); box-shadow: 0 0 0 3px rgba(206, 74, 24, 0.2); }
+.dot.busy { background: var(--saffron); box-shadow: 0 0 0 3px rgba(233, 160, 59, 0.25); animation: pulsedot 1.2s ease-in-out infinite; }
 .iconbtn {
   width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line);
   background: var(--surface); display: grid; place-items: center; color: var(--ink-2);
@@ -376,6 +377,18 @@ kbd { font: 600 10.5px/1 var(--ui); background: var(--surface-2); border: 1px so
 .answer-md th, .answer-md td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; }
 .answer-md th { background: var(--surface-2); font-weight: 600; }
 
+.conflict {
+  display: flex; gap: 9px; align-items: flex-start; margin-bottom: 14px;
+  background: var(--terra-soft); border: 1px solid #f6d9c7; border-left: 3px solid var(--terra);
+  border-radius: 0 10px 10px 0; padding: 11px 14px;
+  font: 400 13px/1.55 var(--ui); color: #7a3a18;
+}
+.src.flagged { border-color: #f0c6ac; }
+.src-flag {
+  display: inline-block; margin-top: 9px; padding: 4px 8px; border-radius: 6px;
+  background: var(--terra-soft); border: 1px solid #f6d9c7; color: #7a3a18;
+  font: 500 11px/1.3 var(--ui);
+}
 .caret { display: inline-block; width: 7px; height: 1.05em; vertical-align: text-bottom; margin-left: 2px; background: var(--terra); border-radius: 1px; animation: pulsedot 1s steps(2) infinite; }
 
 /* ── source drawer ────────────────────────────────────────────────────── */
@@ -460,6 +473,58 @@ kbd { font: 600 10.5px/1 var(--ui); background: var(--surface-2); border: 1px so
   .ans-head h2 { font-size: 22px; }
 }
 @media (min-width: 861px) { .rail-toggle { display: none; } }
+
+/* ============================================================================
+   Print — a kitchen-friendly recipe sheet.
+   The hero photo is a CSS background-image, which browsers do not print unless
+   the user enables "background graphics", so print deliberately falls back to a
+   plain text header rather than showing an empty box.
+   ========================================================================== */
+.print-only { display: none; }
+
+@media print {
+  @page { margin: 14mm; }
+
+  html, body { background: #fff !important; height: auto; }
+  .rail, .topbar, .dock, .drawer, .scrim, .trace,
+  .ans-foot, .bubble, .sugg-title, .grid-4, .browse,
+  .eyebrow, .lede, h1.title, .composer { display: none !important; }
+
+  .app, .app.with-drawer { display: block !important; height: auto; }
+  .canvas { background: #fff !important; display: block; }
+  .canvas::before { display: none !important; }
+  .scroll { overflow: visible !important; padding: 0 !important; height: auto; }
+  /* the 768px screen measure wastes half a printed page */
+  .wrap { max-width: none !important; margin: 0 !important; }
+  .thread { padding: 0 !important; gap: 0 !important; display: block; }
+
+  /* keep only the most recent answer — nobody prints the whole chat log */
+  .thread > *:not(:last-child) { display: none !important; }
+
+  .answer { box-shadow: none !important; border: 0 !important; border-radius: 0; }
+  .ans-head, .ans-head.on-photo {
+    background-image: none !important; background: #fff !important;
+    min-height: 0 !important; display: block; padding: 0 0 10px !important;
+    border-bottom: 2px solid #1a1613 !important;
+  }
+  .ans-hero-scrim { display: none !important; }
+  .ans-head h2, .ans-head.on-photo h2 { color: #000 !important; text-shadow: none !important; font-size: 24pt; }
+  .ans-sub, .ans-head.on-photo .ans-sub { color: #555 !important; text-shadow: none !important; }
+  .ans-body { padding: 12px 0 0 !important; }
+  .answer-md { font-size: 11.5pt; line-height: 1.5; color: #000; }
+  .answer-md h1, .answer-md h2, .answer-md h3 { font-size: 13pt; margin: 0.9em 0 0.35em; }
+  .answer-md strong { color: #000; }
+  .ing-have, .conflict, .badge-improvised {
+    border: 1px solid #999 !important; background: #fff !important; color: #000 !important;
+  }
+  .print-only { display: block; }
+  .print-byline {
+    margin-top: 14px; padding-top: 8px; border-top: 1px solid #ccc;
+    font: 400 9pt/1.4 var(--ui); color: #666;
+  }
+  /* never split a recipe across pages mid-step */
+  .answer-md li, .stepline { break-inside: avoid; page-break-inside: avoid; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }

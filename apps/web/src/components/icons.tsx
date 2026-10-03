@@ -116,6 +116,13 @@ export const Copy = (p: P) => (
   </svg>
 )
 
+export const Printer = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M7 8V3.5h10V8" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+    <path d="M5 8h14a2 2 0 0 1 2 2v5h-4v4H7v-4H3v-5a2 2 0 0 1 2-2Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+  </svg>
+)
+
 export const Book = (p: P) => (
   <svg {...base(p)}>
     <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v15H6.5A2.5 2.5 0 0 0 4 20.5v-15Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
@@ -141,6 +148,13 @@ export const Warn = (p: P) => (
   <svg {...base(p)}>
     <path d="M12 4.5 21 19H3l9-14.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
     <path d="M12 10v4M12 17h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+)
+
+export const Shield = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M12 3.5 19 6v5.5c0 4-3 7.2-7 9-4-1.8-7-5-7-9V6l7-2.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+    <path d="m9 12 2 2 4-4" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 )
 
