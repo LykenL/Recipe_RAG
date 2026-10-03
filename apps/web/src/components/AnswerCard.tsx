@@ -103,6 +103,38 @@ function splitTitle(markdown: string): { title?: string; body: string; improvise
   return { body, improvised }
 }
 
+const normaliseTitle = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+/**
+ * Pick the photo of the dish the answer is actually about.
+ *
+ * The top-ranked source is not necessarily the one the model chose — it may
+ * answer with the 2nd hit while the 1st stays the best-scoring. Using
+ * sources[0] blindly put a photo of Kentucky Fried Chicken on a Piri-piri
+ * recipe. Showing no photo is better than showing the wrong dish.
+ */
+function heroImage(title: string | undefined, sources: Source[]): string {
+  const withImage = sources.filter((s) => s.image)
+  if (withImage.length === 0) return ''
+  if (!title) return withImage[0].image ?? ''
+
+  const want = normaliseTitle(title)
+  const exact = withImage.find((s) => normaliseTitle(s.title) === want)
+  if (exact) return exact.image ?? ''
+
+  // tolerate "Recipe (Pollo a la Naranja)" style suffixes in either direction
+  const partial = withImage.find((s) => {
+    const got = normaliseTitle(s.title)
+    return got.length >= 6 && (want.includes(got) || got.includes(want))
+  })
+  return partial?.image ?? ''
+}
+
 export function AnswerCard({ content, sources, done, error, pending }: Props) {
   const [copied, setCopied] = useState(false)
   const { title, body, improvised } = splitTitle(normalizeMarkdown(content))
@@ -143,9 +175,8 @@ export function AnswerCard({ content, sources, done, error, pending }: Props) {
         ? 'No cookbook match — answered without sources'
         : ''
 
-  // The dish photo from the top-ranked source. Falls back to a plain header
-  // when the corpus has no image for this recipe.
-  const hero = sources[0]?.image?.trim() || ''
+  // Photo of the dish this answer is actually about (not simply the top hit).
+  const hero = heroImage(title, sources)
 
   return (
     <div className="answer">
