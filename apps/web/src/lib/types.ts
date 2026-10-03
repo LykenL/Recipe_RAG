@@ -67,6 +67,39 @@ export interface SampleDish {
   area: string
 }
 
+/** One card in the browse grid. */
+export interface RecipeSummary {
+  id: number
+  title: string
+  image: string
+  category: string
+  area: string
+  /** cosine score; null when browsing rather than searching */
+  score?: number | null
+}
+
+export interface Facet {
+  value: string
+  count: number
+}
+
+export interface RecipeList {
+  total: number
+  page: number
+  page_size: number
+  has_more: boolean
+  query: string
+  items: RecipeSummary[]
+  facets: { category: Facet[]; area: Facet[] }
+}
+
+export interface RecipeDetail extends RecipeSummary {
+  ingredients: string
+  instructions: string
+  notes: string
+  serving_size: number[] | null
+}
+
 export interface IndexInfo {
   count: number
   dim: number

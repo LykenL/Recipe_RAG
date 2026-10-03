@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { BrowseView } from './components/BrowseView'
 import { ChatThread } from './components/ChatThread'
+import { CommandPalette } from './components/CommandPalette'
+import { RecipeDetail } from './components/RecipeDetail'
 import { Composer } from './components/Composer'
 import { EmptyState } from './components/EmptyState'
 import { Sidebar } from './components/Sidebar'
 import { SourceDrawer } from './components/SourceDrawer'
 import { TopBar } from './components/TopBar'
 import { fetchIndexInfo, fetchSamples } from './lib/api'
-import type { IndexInfo, KitchenSettings, SampleDish } from './lib/types'
+import type { IndexInfo, KitchenSettings, RecipeSummary, SampleDish } from './lib/types'
 import { useChat } from './hooks/useChat'
 import { useSessions } from './hooks/useSessions'
+import { useBrowse } from './hooks/useBrowse'
 
 const DEFAULT_SETTINGS: KitchenSettings = {
   persona: 'Friendly home cook',
@@ -24,11 +28,15 @@ export default function App() {
   const [waking, setWaking] = useState(false)
   const [railOpen, setRailOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [view, setView] = useState<'chat' | 'browse'>('chat')
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const [detail, setDetail] = useState<RecipeSummary | null>(null)
 
   const { messages, streaming, sources, send, stop, load } = useChat()
   const sessions = useSessions()
   const scrollRef = useRef<HTMLDivElement>(null)
   const loadedRef = useRef<string | null>(null)
+  const browse = useBrowse(view === 'browse')
 
   useEffect(() => {
     const ctrl = new AbortController()
@@ -43,6 +51,18 @@ export default function App() {
       .then(setSamples)
       .catch(() => setSamples([]))
     return () => ctrl.abort()
+  }, [])
+
+  // ⌘K / Ctrl+K opens the index search from anywhere.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen((open) => !open)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   }, [])
 
   // A free Render instance is evicted after ~15 min idle; the next request pays
@@ -87,6 +107,17 @@ export default function App() {
       void send(text, settings)
     },
     [send, settings],
+  )
+
+  /** Hand a dish to the agent — the one path where browsing leads to the chat. */
+  const askAbout = useCallback(
+    (dish: RecipeSummary) => {
+      setDetail(null)
+      setPaletteOpen(false)
+      setView('chat')
+      handleSend(`How do I make ${dish.title}?`)
+    },
+    [handleSend],
   )
 
   const tags = useMemo(() => {
@@ -136,13 +167,35 @@ export default function App() {
           online={online}
           waking={waking}
           sourceCount={sources.length}
+          view={view}
+          onView={setView}
+          onSearch={() => setPaletteOpen(true)}
           onOpenSettings={() => setRailOpen(true)}
           onToggleSources={() => setDrawerOpen((v) => !v)}
         />
 
         <div className="scroll" ref={scrollRef}>
-          <div className="wrap">
-            {isEmpty ? (
+          <div className={`wrap${view === 'browse' ? ' wide' : ''}`}>
+            {view === 'browse' ? (
+              <BrowseView
+                items={browse.items}
+                total={browse.total}
+                hasMore={browse.hasMore}
+                loading={browse.loading}
+                loadingMore={browse.loadingMore}
+                error={browse.error}
+                query={browse.query}
+                category={browse.category}
+                area={browse.area}
+                facets={browse.facets}
+                onQuery={browse.setQuery}
+                onCategory={browse.setCategory}
+                onArea={browse.setArea}
+                onLoadMore={browse.loadMore}
+                onOpen={setDetail}
+                onAsk={askAbout}
+              />
+            ) : isEmpty ? (
               <EmptyState
                 onSend={handleSend}
                 onStop={stop}
@@ -160,7 +213,7 @@ export default function App() {
           </div>
         </div>
 
-        {!isEmpty && (
+        {view === 'chat' && !isEmpty && (
           <div className="dock">
             <div className="wrap">
               {!online && (
@@ -180,7 +233,16 @@ export default function App() {
         )}
       </main>
 
-      {sources.length > 0 && (
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onOpenRecipe={setDetail}
+        onAsk={askAbout}
+      />
+
+      <RecipeDetail dish={detail} onClose={() => setDetail(null)} onAsk={askAbout} />
+
+      {view === 'chat' && sources.length > 0 && (
         <SourceDrawer
           sources={sources}
           info={info}

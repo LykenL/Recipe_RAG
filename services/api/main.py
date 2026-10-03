@@ -29,10 +29,11 @@ import random
 import threading
 import time
 from contextlib import asynccontextmanager
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Iterator
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -319,6 +320,105 @@ def warmup() -> dict[str, Any]:
         "model": assistant.llm.model,
         "recipes": assistant.index_meta.get("count"),
         "note": err or None,
+    }
+
+
+@app.get("/api/recipes")
+def list_recipes(
+    q: str = "",
+    category: str = "",
+    area: str = "",
+    page: int = Query(1, ge=1),
+    page_size: int = Query(24, ge=1, le=60),
+) -> dict[str, Any]:
+    """Browse or search the cookbook directly.
+
+    Deliberately does not touch the LLM: searching 829 embeddings takes about a
+    millisecond, so this entry point stays usable when the model is queued,
+    rate-limited or out of quota. The agentic chat is unchanged — this is an
+    additional way in, not a replacement.
+    """
+    assistant = get_assistant()
+    entries = assistant.vector_store
+
+    # filter first, so scoring and paging only see the candidates
+    rows = list(enumerate(entries))
+    if category:
+        rows = [(i, e) for i, e in rows if (e.get("metadata") or {}).get("category") == category]
+    if area:
+        rows = [(i, e) for i, e in rows if (e.get("metadata") or {}).get("area") == area]
+
+    query = q.strip()
+    scored: list[tuple[float, int, dict[str, Any]]] = []
+    if query:
+        from recipe_rag.retrieval import _cosine_scores, _coerce_embedding
+
+        vec = _coerce_embedding(assistant.embedder.encode(query))
+        matrix = assistant.matrix[[i for i, _ in rows]] if rows else None
+        sims = _cosine_scores(vec, matrix) if matrix is not None else []
+        scored = [(float(s), i, e) for (i, e), s in zip(rows, sims)]
+        scored.sort(key=lambda t: -t[0])
+    else:
+        scored = [(0.0, i, e) for i, e in sorted(rows, key=lambda t: (t[1].get("metadata") or {}).get("title", ""))]
+
+    total = len(scored)
+    start = (page - 1) * page_size
+    window = scored[start : start + page_size]
+
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "has_more": start + page_size < total,
+        "query": query,
+        "items": [
+            {
+                "id": idx,
+                "title": (e.get("metadata") or {}).get("title", ""),
+                "image": (e.get("metadata") or {}).get("image", ""),
+                "category": (e.get("metadata") or {}).get("category", ""),
+                "area": (e.get("metadata") or {}).get("area", ""),
+                "score": round(score, 4) if query else None,
+            }
+            for score, idx, e in window
+        ],
+        "facets": _facets(),
+    }
+
+
+@lru_cache(maxsize=1)
+def _facets() -> dict[str, list[dict[str, Any]]]:
+    assistant = get_assistant()
+    counts: dict[str, dict[str, int]] = {"category": {}, "area": {}}
+    for entry in assistant.vector_store:
+        meta = entry.get("metadata") or {}
+        for key in ("category", "area"):
+            value = (meta.get(key) or "").strip()
+            if value:
+                counts[key][value] = counts[key].get(value, 0) + 1
+    return {
+        key: [{"value": v, "count": c} for v, c in sorted(counts[key].items(), key=lambda kv: -kv[1])]
+        for key in counts
+    }
+
+
+@app.get("/api/recipes/{rid}")
+def recipe_detail(rid: int) -> dict[str, Any]:
+    """The full text of one recipe, for the browse detail panel."""
+    assistant = get_assistant()
+    if rid < 0 or rid >= len(assistant.vector_store):
+        raise HTTPException(status_code=404, detail="No such recipe")
+    meta = assistant.vector_store[rid].get("metadata") or {}
+    return {
+        "id": rid,
+        "title": meta.get("title", ""),
+        "image": meta.get("image", ""),
+        "category": meta.get("category", ""),
+        "area": meta.get("area", ""),
+        "ingredients": meta.get("ingredients", ""),
+        "instructions": meta.get("instructions", ""),
+        "notes": meta.get("notes", ""),
+        "serving_size": meta.get("serving_size"),
     }
 
 

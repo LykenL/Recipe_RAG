@@ -1,5 +1,5 @@
 import type { IndexInfo } from '../lib/types'
-import { Book, Menu } from './icons'
+import { Book, Menu, Search } from './icons'
 
 interface Props {
   title: string
@@ -9,6 +9,9 @@ interface Props {
   /** true when the first request has been pending long enough to look stuck */
   waking: boolean
   sourceCount: number
+  view: 'chat' | 'browse'
+  onView: (v: 'chat' | 'browse') => void
+  onSearch: () => void
   onOpenSettings: () => void
   onToggleSources: () => void
 }
@@ -20,6 +23,9 @@ export function TopBar({
   online,
   waking,
   sourceCount,
+  view,
+  onView,
+  onSearch,
   onOpenSettings,
   onToggleSources,
 }: Props) {
@@ -29,14 +35,30 @@ export function TopBar({
         <Menu width={16} height={16} />
       </button>
 
-      <div style={{ minWidth: 0 }}>
-        <div className="tb-title" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {title}
+      <nav className="viewtabs" aria-label="View">
+        <button className={view === 'chat' ? 'on' : ''} onClick={() => onView('chat')}>
+          Chat
+        </button>
+        <button className={view === 'browse' ? 'on' : ''} onClick={() => onView('browse')}>
+          Browse
+        </button>
+      </nav>
+
+      {view === 'chat' && (
+        <div style={{ minWidth: 0, marginLeft: 4 }}>
+          <div className="tb-title" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {title}
+          </div>
+          <div className="tb-sub">{subtitle}</div>
         </div>
-        <div className="tb-sub">{subtitle}</div>
-      </div>
+      )}
 
       <div className="tb-right">
+        <button className="searchbtn" onClick={onSearch} title="Search the cookbook (⌘K)">
+          <Search width={13} height={13} />
+          <span>Search</span>
+          <kbd>⌘K</kbd>
+        </button>
         <span
           className="pill"
           title={
@@ -50,6 +72,7 @@ export function TopBar({
               ? 'waking the server…'
               : 'connecting…'}
         </span>
+        {view === 'chat' && (
         <button className="iconbtn drawer-toggle" onClick={onToggleSources} aria-label="Toggle sources">
           <Book width={15} height={15} />
           {sourceCount > 0 && (
@@ -69,6 +92,7 @@ export function TopBar({
             </span>
           )}
         </button>
+        )}
       </div>
     </header>
   )

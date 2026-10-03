@@ -1,4 +1,13 @@
-import type { ChatRequest, DonePayload, IndexInfo, SampleDish, Source, TraceStep } from './types'
+import type {
+  ChatRequest,
+  DonePayload,
+  IndexInfo,
+  RecipeDetail,
+  RecipeList,
+  SampleDish,
+  Source,
+  TraceStep,
+} from './types'
 
 // Same-origin in production (FastAPI serves dist/), Vite proxy in dev.
 const BASE = import.meta.env.VITE_API_BASE ?? ''
@@ -15,6 +24,39 @@ export async function fetchSamples(n = 6, signal?: AbortSignal): Promise<SampleD
   const res = await fetch(`${BASE}/api/recipes/sample?n=${n}`, { signal })
   if (!res.ok) return []
   return (await res.json()) as SampleDish[]
+}
+
+export interface BrowseParams {
+  q?: string
+  category?: string
+  area?: string
+  page?: number
+  pageSize?: number
+}
+
+/**
+ * Browse or search the cookbook. No LLM is involved, so this stays fast (and
+ * available) even while a chat answer is queued behind the model.
+ */
+export async function fetchRecipes(
+  params: BrowseParams = {},
+  signal?: AbortSignal,
+): Promise<RecipeList> {
+  const search = new URLSearchParams()
+  if (params.q) search.set('q', params.q)
+  if (params.category) search.set('category', params.category)
+  if (params.area) search.set('area', params.area)
+  search.set('page', String(params.page ?? 1))
+  search.set('page_size', String(params.pageSize ?? 24))
+  const res = await fetch(`${BASE}/api/recipes?${search}`, { signal })
+  if (!res.ok) throw new Error(`GET /api/recipes -> ${res.status}`)
+  return (await res.json()) as RecipeList
+}
+
+export async function fetchRecipe(id: number, signal?: AbortSignal): Promise<RecipeDetail> {
+  const res = await fetch(`${BASE}/api/recipes/${id}`, { signal })
+  if (!res.ok) throw new Error(`GET /api/recipes/${id} -> ${res.status}`)
+  return (await res.json()) as RecipeDetail
 }
 
 export async function fetchIndexInfo(signal?: AbortSignal): Promise<IndexInfo> {
