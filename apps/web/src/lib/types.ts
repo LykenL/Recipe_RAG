@@ -59,6 +59,14 @@ export interface Message {
   pending?: boolean
 }
 
+/** A dish shown in the empty state's browse strip. */
+export interface SampleDish {
+  title: string
+  image: string
+  category: string
+  area: string
+}
+
 export interface IndexInfo {
   count: number
   dim: number

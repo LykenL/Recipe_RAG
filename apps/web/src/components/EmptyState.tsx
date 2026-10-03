@@ -1,3 +1,4 @@
+import type { SampleDish } from '../lib/types'
 import { Composer } from './Composer'
 import { Basket, Clock, Dessert, Protein, Sparkle } from './icons'
 
@@ -50,9 +51,11 @@ interface Props {
   onStop: () => void
   streaming: boolean
   tags: string[]
+  /** a few real dishes from the corpus, shown with their photos */
+  samples: SampleDish[]
 }
 
-export function EmptyState({ onSend, onStop, streaming, tags }: Props) {
+export function EmptyState({ onSend, onStop, streaming, tags, samples }: Props) {
   return (
     <>
       <span className="eyebrow">
@@ -90,6 +93,29 @@ export function EmptyState({ onSend, onStop, streaming, tags }: Props) {
           </button>
         ))}
       </div>
+
+      {samples.length > 0 && (
+        <>
+          <div className="sugg-title">From the cookbook</div>
+          <div className="browse">
+            {samples.map((d) => (
+              <button
+                className="dish"
+                key={d.title}
+                disabled={streaming}
+                title={`Ask about ${d.title}`}
+                onClick={() => onSend(`How do I make ${d.title}?`)}
+              >
+                {d.image && <img src={d.image} alt="" loading="lazy" decoding="async" />}
+                <span className="cap">
+                  <h5>{d.title}</h5>
+                  <span>{[d.area, d.category].filter(Boolean).join(' · ') || 'cookbook'}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </>
   )
 }

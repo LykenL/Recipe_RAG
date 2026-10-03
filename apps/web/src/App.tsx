@@ -5,8 +5,8 @@ import { EmptyState } from './components/EmptyState'
 import { Sidebar } from './components/Sidebar'
 import { SourceDrawer } from './components/SourceDrawer'
 import { TopBar } from './components/TopBar'
-import { fetchIndexInfo } from './lib/api'
-import type { IndexInfo, KitchenSettings } from './lib/types'
+import { fetchIndexInfo, fetchSamples } from './lib/api'
+import type { IndexInfo, KitchenSettings, SampleDish } from './lib/types'
 import { useChat } from './hooks/useChat'
 
 const DEFAULT_SETTINGS: KitchenSettings = {
@@ -18,6 +18,7 @@ const DEFAULT_SETTINGS: KitchenSettings = {
 export default function App() {
   const [settings, setSettings] = useState<KitchenSettings>(DEFAULT_SETTINGS)
   const [info, setInfo] = useState<IndexInfo | null>(null)
+  const [samples, setSamples] = useState<SampleDish[]>([])
   const [online, setOnline] = useState(true)
   const [railOpen, setRailOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -33,6 +34,10 @@ export default function App() {
         setOnline(true)
       })
       .catch(() => setOnline(false))
+    // The browse strip is decorative until asked for; never block first paint.
+    fetchSamples(6, ctrl.signal)
+      .then(setSamples)
+      .catch(() => setSamples([]))
     return () => ctrl.abort()
   }, [])
 
@@ -103,7 +108,13 @@ export default function App() {
         <div className="scroll" ref={scrollRef}>
           <div className="wrap">
             {isEmpty ? (
-              <EmptyState onSend={handleSend} onStop={stop} streaming={streaming} tags={tags} />
+              <EmptyState
+                onSend={handleSend}
+                onStop={stop}
+                streaming={streaming}
+                tags={tags}
+                samples={samples}
+              />
             ) : (
               <ChatThread messages={messages} pantry={settings.pantry} />
             )}

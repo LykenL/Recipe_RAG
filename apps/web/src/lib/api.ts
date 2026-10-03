@@ -1,4 +1,4 @@
-import type { ChatRequest, DonePayload, IndexInfo, Source, TraceStep } from './types'
+import type { ChatRequest, DonePayload, IndexInfo, SampleDish, Source, TraceStep } from './types'
 
 // Same-origin in production (FastAPI serves dist/), Vite proxy in dev.
 const BASE = import.meta.env.VITE_API_BASE ?? ''
@@ -9,6 +9,12 @@ export interface StreamHandlers {
   onToken?: (text: string) => void
   onDone?: (payload: DonePayload) => void
   onError?: (message: string) => void
+}
+
+export async function fetchSamples(n = 6, signal?: AbortSignal): Promise<SampleDish[]> {
+  const res = await fetch(`${BASE}/api/recipes/sample?n=${n}`, { signal })
+  if (!res.ok) return []
+  return (await res.json()) as SampleDish[]
 }
 
 export async function fetchIndexInfo(signal?: AbortSignal): Promise<IndexInfo> {

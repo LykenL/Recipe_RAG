@@ -25,12 +25,13 @@ from __future__ import annotations
 import copy
 import json
 import os
+import random
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Iterator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -240,6 +241,30 @@ def index_info() -> dict[str, Any]:
         "k": assistant.k,
         "min_similarity": assistant.min_similarity,
     }
+
+
+@app.get("/api/recipes/sample")
+def sample_recipes(n: int = Query(6, ge=1, le=12)) -> list[dict[str, Any]]:
+    """A few random dishes for the empty state.
+
+    The corpus carries a photo for 788 of its 829 recipes; showing a handful
+    before the user has asked anything makes the library visible instead of
+    implied.
+    """
+    assistant = get_assistant()
+    pool = [e for e in assistant.vector_store if (e.get("metadata") or {}).get("image")]
+    if not pool:
+        return []
+    picked = random.sample(pool, min(n, len(pool)))
+    return [
+        {
+            "title": (e.get("metadata") or {}).get("title", ""),
+            "image": (e.get("metadata") or {}).get("image", ""),
+            "category": (e.get("metadata") or {}).get("category", ""),
+            "area": (e.get("metadata") or {}).get("area", ""),
+        }
+        for e in picked
+    ]
 
 
 @app.post("/api/chat")
