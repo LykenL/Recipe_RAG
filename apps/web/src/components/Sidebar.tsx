@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { Session } from '../lib/sessions'
 import type { IndexInfo, KitchenSettings } from '../lib/types'
 import { ChefHat, Chevron, Plus, X } from './icons'
 
@@ -19,20 +20,32 @@ interface Props {
   settings: KitchenSettings
   onChange: (next: KitchenSettings) => void
   info: IndexInfo | null
+  sessions: Session[]
+  activeId: string | null
   onNewChat: () => void
-  history: string[]
-  onPickHistory: (question: string) => void
+  onSelectSession: (id: string) => void
+  onDeleteSession: (id: string) => void
   open: boolean
   onClose: () => void
+}
+
+const relativeDay = (ts: number): string => {
+  const days = Math.floor((Date.now() - ts) / 86_400_000)
+  if (days <= 0) return 'today'
+  if (days === 1) return 'yesterday'
+  if (days < 7) return `${days}d ago`
+  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
 export function Sidebar({
   settings,
   onChange,
   info,
+  sessions,
+  activeId,
   onNewChat,
-  history,
-  onPickHistory,
+  onSelectSession,
+  onDeleteSession,
   open,
   onClose,
 }: Props) {
@@ -173,28 +186,50 @@ export function Sidebar({
       </div>
 
       <div>
-        <div className="rail-h">Recent</div>
+        <div className="rail-h">
+          Conversations
+          <span style={{ float: 'right', fontWeight: 500, letterSpacing: 0, textTransform: 'none' }}>
+            {sessions.length}
+          </span>
+        </div>
         <div className="recent">
-          {history.length === 0 ? (
-            <div className="recent-empty">Questions you ask will show up here.</div>
-          ) : (
-            history.slice(-4).reverse().map((q, i) => (
-              <button
-                className={`ritem${i === 0 ? ' on' : ''}`}
-                key={`${q}-${i}`}
-                onClick={() => {
-                  onPickHistory(q)
-                  onClose()
-                }}
-                title={q}
-              >
-                <span className="tdot" />
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {q}
-                </span>
-              </button>
-            ))
-          )}
+          {sessions.map((s) => {
+            const isActive = s.id === activeId
+            const preview =
+              s.messages.find((m) => m.role === 'assistant' && m.done)?.done?.citations ?? 0
+            return (
+              <div className={`ritem-wrap${isActive ? ' on' : ''}`} key={s.id}>
+                <button
+                  className={`ritem${isActive ? ' on' : ''}`}
+                  onClick={() => {
+                    onSelectSession(s.id)
+                    onClose()
+                  }}
+                  title={s.title}
+                >
+                  <span className="tdot" />
+                  <span className="ritem-text">
+                    <span className="ritem-title">{s.title}</span>
+                    <span className="ritem-meta">
+                      {relativeDay(s.updatedAt)}
+                      {preview > 0 && ` · ${preview} cited`}
+                    </span>
+                  </span>
+                </button>
+                <button
+                  className="ritem-del"
+                  aria-label={`Delete ${s.title}`}
+                  title="Delete conversation"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onDeleteSession(s.id)
+                  }}
+                >
+                  <X width={11} height={11} />
+                </button>
+              </div>
+            )
+          })}
         </div>
       </div>
 

@@ -12,6 +12,8 @@ export interface ChatState {
   send: (text: string, settings: KitchenSettings) => Promise<void>
   stop: () => void
   reset: () => void
+  /** replace the transcript, e.g. when switching to another session */
+  load: (messages: Message[]) => void
 }
 
 export function useChat(): ChatState {
@@ -42,6 +44,14 @@ export function useChat(): ChatState {
     abortRef.current = null
     setStreaming(false)
     setMessages([])
+  }, [])
+
+  const load = useCallback((next: Message[]) => {
+    abortRef.current?.abort()
+    abortRef.current = null
+    setStreaming(false)
+    // never restore a transcript that was mid-stream when the tab closed
+    setMessages(next.map((m) => (m.pending ? { ...m, pending: false } : m)))
   }, [])
 
   const send = useCallback(
@@ -118,5 +128,5 @@ export function useChat(): ChatState {
 
   const lastSources = [...messages].reverse().find((m) => m.role === 'assistant')?.sources ?? []
 
-  return { messages, streaming, sources: lastSources, send, stop, reset }
+  return { messages, streaming, sources: lastSources, send, stop, reset, load }
 }

@@ -139,6 +139,19 @@ input, textarea, select { font: inherit; color: inherit; }
 .ritem .tdot { width: 5px; height: 5px; border-radius: 50%; background: #cfc2ae; flex: none; }
 .ritem.on .tdot { background: var(--terra); box-shadow: 0 0 0 3px rgba(206, 74, 24, 0.14); }
 .recent-empty { font: 400 12.5px/1.4 var(--ui); color: var(--muted); padding: 8px 10px; }
+.ritem-wrap { position: relative; display: flex; align-items: stretch; }
+.ritem-wrap .ritem { flex: 1; min-width: 0; }
+.ritem-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ritem-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ritem-meta { font: 400 10.5px/1 var(--ui); color: var(--faint); font-weight: 400; }
+.ritem-del {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center;
+  color: var(--faint); opacity: 0; transition: opacity 0.12s ease, color 0.12s ease;
+}
+.ritem-wrap:hover .ritem-del { opacity: 1; }
+.ritem-del:hover { color: var(--terra); background: var(--terra-soft); }
+.ritem-wrap:hover .ritem-meta { opacity: 0; }
 .rail-foot { margin-top: auto; border-top: 1px solid var(--rail-line); padding-top: 12px; font: 400 11.5px/1.7 var(--ui); color: var(--muted); }
 .rail-foot b { color: var(--ink-2); font-weight: 500; }
 

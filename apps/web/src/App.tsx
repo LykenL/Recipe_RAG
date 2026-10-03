@@ -8,6 +8,7 @@ import { TopBar } from './components/TopBar'
 import { fetchIndexInfo, fetchSamples } from './lib/api'
 import type { IndexInfo, KitchenSettings, SampleDish } from './lib/types'
 import { useChat } from './hooks/useChat'
+import { useSessions } from './hooks/useSessions'
 
 const DEFAULT_SETTINGS: KitchenSettings = {
   persona: 'Friendly home cook',
@@ -23,8 +24,10 @@ export default function App() {
   const [railOpen, setRailOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
 
-  const { messages, streaming, sources, send, stop, reset } = useChat()
+  const { messages, streaming, sources, send, stop, load } = useChat()
+  const sessions = useSessions()
   const scrollRef = useRef<HTMLDivElement>(null)
+  const loadedRef = useRef<string | null>(null)
 
   useEffect(() => {
     const ctrl = new AbortController()
@@ -40,6 +43,23 @@ export default function App() {
       .catch(() => setSamples([]))
     return () => ctrl.abort()
   }, [])
+
+  // Swap the transcript when the active conversation changes.
+  useEffect(() => {
+    const active = sessions.active
+    if (!active || loadedRef.current === active.id) return
+    loadedRef.current = active.id
+    load(active.messages)
+  }, [sessions.active, load])
+
+  // Persist after the tokens stop arriving, not on every one of them.
+  useEffect(() => {
+    const id = sessions.activeId
+    if (!id || loadedRef.current !== id) return
+    const t = window.setTimeout(() => sessions.store(id, messages), 700)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, sessions.activeId])
 
   // Keep the newest turn in view while tokens stream in.
   useEffect(() => {
@@ -84,12 +104,14 @@ export default function App() {
         settings={settings}
         onChange={setSettings}
         info={info}
+        sessions={sessions.sessions}
+        activeId={sessions.activeId}
         onNewChat={() => {
-          reset()
+          sessions.create()
           setRailOpen(false)
         }}
-        history={history}
-        onPickHistory={handleSend}
+        onSelectSession={sessions.select}
+        onDeleteSession={sessions.remove}
         open={railOpen}
         onClose={() => setRailOpen(false)}
       />
