@@ -70,6 +70,28 @@ docker run --rm -p 8000:8000 --env-file .env recipe-rag-api
 
 ---
 
+## 演示前预热
+
+免费实例闲置约 15 分钟会被回收，下一次请求要付完整启动代价。演示前先打一次：
+
+```bash
+curl -s https://recipe-rag-api.onrender.com/warmup | python3 -m json.tool
+# {"ready": true, "llm_ok": true, "llm_ms": 1777, "model": "openai/gpt-oss-20b", ...}
+```
+
+`ready: true` 就可以开始了。服务启动时也会**自动后台预热一次**（`WARMUP=0` 可关闭），
+`/healthz` 的 `llm_warm` 字段反映状态（预热进行中为 `null`）。
+
+**预热能解决什么、不能解决什么：**
+
+| | |
+|---|---|
+| ✅ 提前校验 key / 模型名，启动日志就能看到错误 | 而不是让第一个提问的人踩到 |
+| ✅ 建好到模型服务的 DNS / TLS / 连接 | 第一次提问少付这几百毫秒 |
+| ❌ **减少 NVIDIA 免费额度的排队抖动** | 实测同一句查询 16.8s vs 45.9s，纯远端排队 |
+
+想进一步减少冷启动，可以把这个 URL 丢给免费 uptime 监控（UptimeRobot 之类）定时打。
+
 ## 环境变量
 
 | 变量 | 默认 | 说明 |
@@ -82,6 +104,7 @@ docker run --rm -p 8000:8000 --env-file .env recipe-rag-api
 | `MAX_ITERATIONS` | `3` | 每多一轮就多一次模型调用，直接决定延迟 |
 | `ALLOWED_ORIGINS` | `*` | 有了前端后收紧 |
 | `INDEX_PATH` | `artifacts/index` | 换索引位置 |
+| `WARMUP` | `1` | 设为 `0` 关闭启动时的后台预热 |
 
 ### 模型实测（OPENAI_BASE_URL = NVIDIA）
 

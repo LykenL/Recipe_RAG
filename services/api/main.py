@@ -316,7 +316,7 @@ def warmup() -> dict[str, Any]:
         "llm_ms": llm_ms,
         "model": assistant.llm.model,
         "recipes": assistant.index_meta.get("count"),
-        "error": err or None,
+        "note": err or None,
     }
 
 
