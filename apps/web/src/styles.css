@@ -268,6 +268,7 @@ kbd { font: 600 10.5px/1 var(--ui); background: var(--surface-2); border: 1px so
 .step .s-meta { margin-left: auto; font: 400 12px/1 var(--ui); color: var(--faint); white-space: nowrap; padding-left: 10px; }
 .step.run { color: var(--terra); font-weight: 500; }
 .step.run .s-ic { background: var(--terra-soft); color: var(--terra); }
+.step.run .s-meta { color: var(--terra); font-variant-numeric: tabular-nums; font-weight: 600; }
 .step code { font: 500 12.5px/1 var(--ui); background: var(--surface-2); border: 1px solid var(--line); border-radius: 5px; padding: 2px 5px; }
 
 @keyframes pulsedot { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
