@@ -8,6 +8,8 @@ export interface Source {
   snippet: string
   /** the entire passage, shown when the card is expanded */
   full_text?: string
+  /** TheMealDB thumbnail for this dish, when the corpus has one */
+  image?: string
   source: string
   category?: string
   area?: string

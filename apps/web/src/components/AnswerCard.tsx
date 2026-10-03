@@ -69,15 +69,27 @@ function splitTitle(markdown: string): { title?: string; body: string; improvise
       line.match(/^\*\*(.+?)\*\*:?$/)?.[1] ??
       line.match(/^__(.+?)__:?$/)?.[1]
 
-    // bare title heuristic: short line, no terminal punctuation, list follows.
-    // Skip intervening blank lines — normalisation inserts one before the list.
+    // Bare title. The model often writes the dish name on its own line, then
+    // "Based on **Dish**" on the next — which CommonMark merges into one
+    // paragraph, so the check cannot be "the next line is a list".
+    const SENTENCE_START = /^(here|based on|i |we |you |this|these|there|below|the following|sure|of course)\b/i
     let j = i + 1
-    while (j < lines.length && !lines[j].trim()) j += 1
-    const next = lines[j]?.trim() ?? ''
-    const bare =
-      !explicit && line.length <= 70 && !/[.:;!?]$/.test(line) && LIST_LINE.test(next)
-        ? line
-        : undefined
+    let listWithin3 = false
+    for (let seen = 0; j < lines.length && seen < 3; j += 1) {
+      const t = lines[j].trim()
+      if (!t) continue
+      seen += 1
+      if (LIST_LINE.test(t)) {
+        listWithin3 = true
+        break
+      }
+    }
+    const looksLikeName =
+      line.length <= 60 &&
+      line.split(/\s+/).length <= 6 &&
+      !/[.:;!?]$/.test(line) &&
+      !SENTENCE_START.test(line)
+    const bare = !explicit && looksLikeName && listWithin3 ? line : undefined
 
     const candidate = explicit ?? bare
     if (candidate) {
@@ -131,21 +143,31 @@ export function AnswerCard({ content, sources, done, error, pending }: Props) {
         ? 'No cookbook match — answered without sources'
         : ''
 
+  // The dish photo from the top-ranked source. Falls back to a plain header
+  // when the corpus has no image for this recipe.
+  const hero = sources[0]?.image?.trim() || ''
+
   return (
     <div className="answer">
-      <div className="ans-head">
-        {improvised && (
-          <span className="badge-improvised">
-            <Sparkle width={12} height={12} /> Improvised — not from your cookbook
-          </span>
-        )}
-        {title && <h2>{title}</h2>}
-        {done && (
-          <p className="ans-sub">
-            {done.searches} cookbook search{done.searches === 1 ? '' : 'es'} ·{' '}
-            {(done.elapsed_ms / 1000).toFixed(1)}s
-          </p>
-        )}
+      <div
+        className={`ans-head${hero ? ' on-photo' : ''}`}
+        style={hero ? { backgroundImage: `url("${hero}")` } : undefined}
+      >
+        {hero && <div className="ans-hero-scrim" />}
+        <div className="ans-head-inner">
+          {improvised && (
+            <span className="badge-improvised">
+              <Sparkle width={12} height={12} /> Improvised — not from your cookbook
+            </span>
+          )}
+          {title && <h2>{title}</h2>}
+          {done && (
+            <p className="ans-sub">
+              {done.searches} cookbook search{done.searches === 1 ? '' : 'es'} ·{' '}
+              {(done.elapsed_ms / 1000).toFixed(1)}s
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="ans-body">

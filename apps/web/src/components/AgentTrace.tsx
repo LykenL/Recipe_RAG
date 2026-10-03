@@ -1,5 +1,5 @@
 import type { TraceStep } from '../lib/types'
-import { Check, Dots, Filter, Search, Sparkle } from './icons'
+import { Check, Dots, Filter, Search, Whisk } from './icons'
 
 interface Props {
   steps: TraceStep[]
@@ -21,7 +21,7 @@ export function AgentTrace({ steps, pending, elapsedMs }: Props) {
   return (
     <div className="trace">
       <div className="trace-head">
-        <Sparkle width={14} height={14} style={{ color: 'var(--terra)' }} />
+        <Whisk width={14} height={14} style={{ color: 'var(--terra)' }} />
         Agent trace
         <span className="sp">
           {total} step{total === 1 ? '' : 's'}

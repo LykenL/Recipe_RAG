@@ -129,6 +129,9 @@ def _view(assistant: Any, trace: list[dict[str, Any]]):
                 "snippet": h.snippet,
                 "full_text": h.full_text[:6000],
                 "source": h.source,
+                # TheMealDB thumbnails; the UI shows them as a hero image and
+                # as source-card previews. 788/829 recipes have one.
+                "image": (h.metadata or {}).get("image", ""),
                 "category": (h.metadata or {}).get("category", ""),
                 "area": (h.metadata or {}).get("area", ""),
             }

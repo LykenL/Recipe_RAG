@@ -59,7 +59,14 @@ export function SourceDrawer({ sources, info, open, onClose }: Props) {
                   }}
                 >
                   <div className="src-top">
-                    <span className="idx">{i + 1}</span>
+                    <div className="src-thumb">
+                      {s.image ? (
+                        <img src={s.image} alt="" loading="lazy" decoding="async" />
+                      ) : (
+                        <span className="fallback">{s.title.slice(0, 1)}</span>
+                      )}
+                      <span className="src-idx">{i + 1}</span>
+                    </div>
                     <div style={{ minWidth: 0 }}>
                       <h4>{s.title}</h4>
                       <div className="sub">

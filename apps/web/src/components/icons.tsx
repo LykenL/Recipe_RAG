@@ -143,3 +143,46 @@ export const Warn = (p: P) => (
     <path d="M12 10v4M12 17h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
   </svg>
 )
+
+/* ── kitchen ─────────────────────────────────────────────────────────────── */
+
+/** Whisk — used for "the chef is working", in place of a generic sparkle. */
+export const Whisk = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M12 3v9" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+    <path
+      d="M12 12c-3 0-5 2.2-5 5.2 0 2.3 2.2 3.8 5 3.8s5-1.5 5-3.8c0-3-2-5.2-5-5.2Z"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinejoin="round"
+    />
+    <path d="M12 12c-1.6 1.4-2.4 3-2.4 5M12 12c1.6 1.4 2.4 3 2.4 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+  </svg>
+)
+
+/** Frying pan — used for the "Sear / cook" style steps. */
+export const Pan = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M4 8h11a5 5 0 0 1 0 10H4V8Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+    <path d="M15 13h5.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+  </svg>
+)
+
+export const Flame = (p: P) => (
+  <svg {...base(p)}>
+    <path
+      d="M12 3s4.5 4 4.5 8a4.5 4.5 0 1 1-9 0c0-1.6.7-2.9 1.6-4 .2 1.3 1 2 1.9 2 0-2 .3-4.2 1-6Z"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+/** Herb sprig — decorative accent for empty states. */
+export const Sprig = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M12 21V6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    <path d="M12 12c0-2.5 1.8-4.5 4.5-4.5M12 12c0-2.5-1.8-4.5-4.5-4.5M12 16c0-2.5 1.8-4.5 4.5-4.5M12 16c0-2.5-1.8-4.5-4.5-4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
