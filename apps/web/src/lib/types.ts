@@ -4,7 +4,10 @@ export type Role = 'user' | 'assistant'
 export interface Source {
   title: string
   score: number
+  /** short excerpt, shown collapsed */
   snippet: string
+  /** the entire passage, shown when the card is expanded */
+  full_text?: string
   source: string
   category?: string
   area?: string

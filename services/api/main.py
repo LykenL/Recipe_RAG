@@ -127,6 +127,7 @@ def _view(assistant: Any, trace: list[dict[str, Any]]):
                 "title": h.title,
                 "score": round(float(h.score), 4),
                 "snippet": h.snippet,
+                "full_text": h.full_text[:6000],
                 "source": h.source,
                 "category": (h.metadata or {}).get("category", ""),
                 "area": (h.metadata or {}).get("area", ""),

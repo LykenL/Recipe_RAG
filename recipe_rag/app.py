@@ -47,6 +47,19 @@ class Hit:
         body = " ".join(body.split())
         return (body[:220] + "…") if len(body) > 220 else body
 
+    @property
+    def full_text(self) -> str:
+        """The whole passage, for the UI's expand action.
+
+        `snippet` is deliberately short so the drawer stays scannable, but
+        without the full text the panel cannot be used to verify a claim
+        against its source — which is its whole purpose.
+        """
+        body = (self.text or "").strip()
+        if body.startswith(self.title):
+            body = body[len(self.title) :].lstrip("\n")
+        return body.strip()
+
 
 @dataclass
 class RecipeRAGAssistant:

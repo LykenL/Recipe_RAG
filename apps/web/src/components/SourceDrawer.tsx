@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import type { IndexInfo, Source } from '../lib/types'
-import { Book, X } from './icons'
+import { Book, Chevron, X } from './icons'
 
 interface Props {
   sources: Source[]
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function SourceDrawer({ sources, info, open, onClose }: Props) {
+  const [expanded, setExpanded] = useState<Record<number, boolean>>({})
   const best = sources.length > 0 ? Math.max(...sources.map((s) => s.score)) : 1
 
   return (
@@ -25,8 +27,8 @@ export function SourceDrawer({ sources, info, open, onClose }: Props) {
         </div>
 
         <div className="drawer-note">
-          Every sentence in the answer resolves to one of these passages. Scores are cosine
-          similarity against your question.
+          Every sentence in the answer resolves to one of these passages. Click a card to read
+          the full passage — that is how you check the answer against its source.
         </div>
 
         <div className="drawer-body">
@@ -37,27 +39,51 @@ export function SourceDrawer({ sources, info, open, onClose }: Props) {
               Ask a cooking question and the matches will appear here.
             </div>
           ) : (
-            sources.map((s, i) => (
-              <article className="src" key={`${s.title}-${i}`}>
-                <div className="src-top">
-                  <span className="idx">{i + 1}</span>
-                  <div style={{ minWidth: 0 }}>
-                    <h4>{s.title}</h4>
-                    <div className="sub">
-                      {[s.area, s.category].filter(Boolean).join(' · ') || s.source || 'cookbook'}
+            sources.map((s, i) => {
+              const body = s.full_text || s.snippet
+              const canExpand = body.length > (s.snippet?.length ?? 0) + 20
+              const isOpen = Boolean(expanded[i])
+              return (
+                <article
+                  className={`src${canExpand ? ' expandable' : ''}`}
+                  key={`${s.title}-${i}`}
+                  onClick={() => canExpand && setExpanded((p) => ({ ...p, [i]: !p[i] }))}
+                  role={canExpand ? 'button' : undefined}
+                  tabIndex={canExpand ? 0 : undefined}
+                  aria-expanded={canExpand ? isOpen : undefined}
+                  onKeyDown={(e) => {
+                    if (canExpand && (e.key === 'Enter' || e.key === ' ')) {
+                      e.preventDefault()
+                      setExpanded((p) => ({ ...p, [i]: !p[i] }))
+                    }
+                  }}
+                >
+                  <div className="src-top">
+                    <span className="idx">{i + 1}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <h4>{s.title}</h4>
+                      <div className="sub">
+                        {[s.area, s.category].filter(Boolean).join(' · ') || s.source || 'cookbook'}
+                      </div>
+                    </div>
+                    <div className="score">
+                      <b>{s.score.toFixed(2)}</b>
                     </div>
                   </div>
-                  <div className="score">
-                    <b>{s.score.toFixed(2)}</b>
+                  {/* bars are scaled to the best hit so small differences stay visible */}
+                  <div className="bar">
+                    <i style={{ width: `${Math.max(6, (s.score / best) * 100)}%` }} />
                   </div>
-                </div>
-                {/* bars are scaled to the best hit so small differences stay visible */}
-                <div className="bar">
-                  <i style={{ width: `${Math.max(6, (s.score / best) * 100)}%` }} />
-                </div>
-                {s.snippet && <p>“{s.snippet}”</p>}
-              </article>
-            ))
+                  <p className={isOpen ? 'full' : ''}>{isOpen ? body : body.slice(0, 220)}</p>
+                  {canExpand && (
+                    <span className="src-toggle">
+                      {isOpen ? 'Show less' : 'Show full passage'}
+                      <Chevron width={12} height={12} style={{ transform: isOpen ? 'rotate(180deg)' : undefined }} />
+                    </span>
+                  )}
+                </article>
+              )
+            })
           )}
         </div>
 

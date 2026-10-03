@@ -335,7 +335,14 @@ kbd { font: 600 10.5px/1 var(--ui); background: var(--surface-2); border: 1px so
 .score b { font: 600 13px/1 var(--ui); color: var(--sage); }
 .bar { height: 4px; border-radius: 2px; background: #f0e8dd; margin-top: 9px; overflow: hidden; }
 .bar i { display: block; height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--sage), #7fb68e); }
-.src p { font: 400 12.5px/1.55 var(--ui); color: var(--muted); margin: 9px 0 0; border-top: 1px dashed #f0e8dd; padding-top: 9px; }
+.src p { font: 400 12.5px/1.55 var(--ui); color: var(--muted); margin: 9px 0 0; border-top: 1px dashed #f0e8dd; padding-top: 9px; white-space: pre-wrap; }
+.src.expandable { cursor: pointer; transition: border-color 0.15s ease; }
+.src.expandable:hover { border-color: var(--line-2); }
+.src p.full { max-height: 42vh; overflow-y: auto; }
+.src-toggle {
+  display: inline-flex; align-items: center; gap: 5px; margin-top: 8px;
+  font: 600 11.5px/1 var(--ui); color: var(--terra); letter-spacing: 0.02em;
+}
 .drawer-foot { padding: 12px 20px 16px; border-top: 1px solid #f3ece2; font: 400 11.5px/1.7 var(--ui); color: var(--faint); }
 .drawer-empty { padding: 26px 20px; font: 400 13px/1.6 var(--ui); color: var(--muted); text-align: center; }
 
