@@ -105,6 +105,20 @@ curl -s https://recipe-rag-api.onrender.com/warmup | python3 -m json.tool
 | `ALLOWED_ORIGINS` | `*` | 有了前端后收紧 |
 | `INDEX_PATH` | `artifacts/index` | 换索引位置 |
 | `WARMUP` | `1` | 设为 `0` 关闭启动时的后台预热 |
+| `MAX_SEARCHES` | `2` | 单次回答最多检索几轮，**由代码强制**而非写在 prompt 里 |
+| `FORCE_FIRST_SEARCH` | `0` | 设为 `1` 强制第一轮必须检索。**默认关闭**，原因见下 |
+
+### 为什么不强制第一次检索（实测）
+
+我试过开启它。它确实消除了"模型不查菜谱直接凭记忆回答"，但**弄坏了一个本来正常的场景**：
+
+| 问题（已声明坚果过敏） | 强制前 | 强制后 |
+|---|---|---|
+| "a dessert with nuts" | 6.3s，清晰拒绝：*"我不能提供含坚果的甜点，因为你有坚果过敏"* | 检索 4 次后**什么都不输出**（推理耗尽预算） |
+
+而且原来的行为**并不是不诚实**：没有检索的回答，界面本来就写着 `No cookbook match — answered without sources`，trace 里也写着 `No cookbook search was needed for this question`。
+
+所以默认关闭，保留 `FORCE_FIRST_SEARCH=1` 作为可选项。
 
 ### 模型实测（OPENAI_BASE_URL = NVIDIA）
 
