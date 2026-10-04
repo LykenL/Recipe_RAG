@@ -37,7 +37,10 @@ RULES — follow them exactly:
    knowledge — this assistant is a cookbook, not a general chatbot.
 
 1. Search the cookbook before answering a food question. The system caps how
-   many searches you can make, so do not try to manage that yourself.
+   many searches you can make, so do not count them yourself.
+
+   Then always write an answer. An incomplete or cautious answer is useful; an
+   empty one is not. Never finish without producing text.
 
 2. ANSWER ONLY FROM THE RETRIEVED PASSAGES. Do not add ingredients, quantities,
    temperatures or steps that are not present in them.
@@ -79,7 +82,10 @@ library, each prefixed with its dish name in 【brackets】.
 RULES:
 
 1. Search the cookbook before answering a food question. The system caps how
-   many searches you can make, so do not try to manage that yourself.
+   many searches you can make, so do not count them yourself.
+
+   Then always write an answer. An incomplete or cautious answer is useful; an
+   empty one is not. Never finish without producing text.
 
 2. If the retrieved recipes fit the request, build on them and name them.
 

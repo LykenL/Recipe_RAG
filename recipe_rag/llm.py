@@ -167,19 +167,21 @@ class LLMClient:
             tool_calls: list[dict[str, Any]] = []
             full_content = ""
             reasoning_chars = 0
+            stream_failed = False
 
-            for chunk in response:
-                if not chunk.choices:
+            try:
+              for chunk in response:
+                  if not chunk.choices:
                     continue
-                delta = chunk.choices[0].delta
+                  delta = chunk.choices[0].delta
 
-                # Reasoning models emit deliberation here. It is not the answer,
-                # but tracking the volume distinguishes "model was cut off mid
-                # thought" from "model returned nothing at all".
-                if getattr(delta, "reasoning_content", None):
+                  # Reasoning models emit deliberation here. It is not the answer,
+                  # but tracking the volume distinguishes "model was cut off mid
+                  # thought" from "model returned nothing at all".
+                  if getattr(delta, "reasoning_content", None):
                     reasoning_chars += len(delta.reasoning_content)
 
-                if getattr(delta, "tool_calls", None):
+                  if getattr(delta, "tool_calls", None):
                     for tc in delta.tool_calls:
                         while len(tool_calls) <= tc.index:
                             tool_calls.append(
@@ -196,10 +198,21 @@ class LLMClient:
                         if tc.function and tc.function.arguments:
                             tool_calls[tc.index]["function"]["arguments"] += tc.function.arguments
 
-                if delta.content:
+                  if delta.content:
                     full_content += delta.content
                     answer_text += delta.content
                     yield delta.content
+            except Exception as exc:
+                # Providers abort streams mid-flight — observed with gpt-oss on
+                # a malformed tool-call header ("unexpected tokens remaining in
+                # message header"). Without this the whole request dies with an
+                # unhandled 500 instead of degrading to a plain answer.
+                stream_failed = True
+                if not full_content.strip():
+                    print(f"[stream] aborted before any content: {exc}", flush=True)
+
+            if stream_failed and not full_content.strip():
+                break  # leave the loop; the salvage pass below still runs
 
             # No tools requested -> the text we just streamed is the final answer.
             if not tool_calls:
@@ -234,15 +247,75 @@ class LLMClient:
             searches_made += sum(1 for t in tool_calls if t["function"]["name"] == search_tool_name)
 
             if is_final and reasoning_chars and not full_content.strip():
-                yield (
-                    "\n\n⚠️ The model spent its whole response budget on internal reasoning "
-                    "and never wrote an answer. Try rephrasing, or switch OPENAI_MODEL to a "
-                    "non-reasoning model."
+                # Do NOT return here: this used to bypass the salvage pass, which
+                # is exactly the case salvage exists for.
+                print(
+                    f"[loop] final round spent {reasoning_chars} chars on reasoning, "
+                    "no answer text — falling through to salvage",
+                    flush=True,
                 )
-                return
+                break
 
+        # Salvage pass. Reasoning models occasionally spend the whole budget of
+        # the final round deliberating and emit no visible text at all — measured
+        # about one run in three on a query that conflicts with the user's own
+        # dietary setting. Wording changes reduce the rate but cannot remove it,
+        # so make one last attempt with a short, tool-free context.
         if not answer_text.strip():
+            salvaged = self._salvage(messages, user_query, max_tokens)
+            if salvaged:
+                for piece in salvaged:
+                    answer_text += piece
+                    yield piece
+                return
             yield (
                 "\n\n⚠️ The model did not produce an answer within the step limit. "
                 "Try rephrasing the question."
             )
+
+    def _salvage(
+        self,
+        messages: list[dict[str, Any]],
+        user_query: str,
+        max_tokens: int,
+    ) -> Iterator[str]:
+        """One last, tightly-scoped attempt at getting any answer out.
+
+        Keeps only the system prompt, the question, the final tool result and a
+        blunt instruction — the accumulated tool history is what tips these
+        models into deliberating instead of writing.
+        """
+        tool_results = [m for m in messages if m.get("role") == "tool"]
+        trimmed: list[dict[str, Any]] = [messages[0]]
+        trimmed.append({"role": "user", "content": user_query})
+        if tool_results:
+            trimmed.append(tool_results[-1])
+        trimmed.append(
+            {
+                "role": "user",
+                "content": (
+                    "Answer now in at most three sentences, using only the passages above. "
+                    "Do not deliberate and do not request anything."
+                ),
+            }
+        )
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=trimmed,
+                max_tokens=max_tokens,
+                temperature=self.temperature,
+                stream=True,
+            )
+            produced = False
+            for chunk in response:
+                if not chunk.choices:
+                    continue
+                text = chunk.choices[0].delta.content
+                if text:
+                    produced = True
+                    yield text
+            if not produced:
+                return
+        except Exception:
+            return
