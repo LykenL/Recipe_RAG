@@ -75,6 +75,12 @@ class LLMClient:
         history: Sequence[dict[str, Any]] | None = None,
         max_iterations: int = 5,
         max_tokens: int = 400,
+        #: require the first tool call instead of offering it. Off by default;
+        #: see the measurement note in app.py before enabling.
+        force_first_search: bool = False,
+        #: cap on searches across the whole run, enforced here rather than asked
+        #: for in prose. One round may contain several parallel tool calls.
+        max_searches: int = 2,
     ) -> Iterator[str]:
         """ReAct-style loop over native tool calling. Yields assistant text as it streams.
 
@@ -89,10 +95,16 @@ class LLMClient:
 
         messages = self._build_messages(system_prompt, user_query, history)
         answer_text = ""
+        search_tool_name = tools[0]["function"]["name"] if tools else ""
+        searches_made = 0
 
         for iteration in range(max_iterations):
             is_final = iteration == max_iterations - 1
-            use_tools = bool(tools) and self.supports_tools and not is_final
+            # Search budget is enforced here rather than asked for in the prompt.
+            # Prose constraints on mechanics have already backfired once in this
+            # project ("leave a BLANK LINE" produced the literal text).
+            budget_left = searches_made < max_searches
+            use_tools = bool(tools) and self.supports_tools and not is_final and budget_left
 
             kwargs: dict[str, Any] = {
                 "model": self.model,
@@ -103,7 +115,16 @@ class LLMClient:
             }
             if use_tools:
                 kwargs["tools"] = tools
-                kwargs["tool_choice"] = "auto"
+                # On the first turn of an in-scope question, require the search.
+                # Models otherwise sometimes answer a cooking question straight
+                # from memory, which produces an answer with no sources at all.
+                if force_first_search and iteration == 0 and search_tool_name:
+                    kwargs["tool_choice"] = {
+                        "type": "function",
+                        "function": {"name": search_tool_name},
+                    }
+                else:
+                    kwargs["tool_choice"] = "auto"
             elif is_final and answer_text.strip() == "" and messages:
                 # nudge: stop researching and write the answer from what we have
                 messages = messages + [
@@ -120,7 +141,17 @@ class LLMClient:
                 response = self.client.chat.completions.create(**kwargs)
             except Exception as exc:
                 lowered = str(exc).lower()
-                if use_tools and any(m in lowered for m in _TOOL_UNSUPPORTED_MARKERS):
+                forced = isinstance(kwargs.get("tool_choice"), dict)
+                if use_tools and forced:
+                    # Forcing a specific function is not supported everywhere;
+                    # fall back to "auto" rather than dropping tools entirely.
+                    kwargs["tool_choice"] = "auto"
+                    try:
+                        response = self.client.chat.completions.create(**kwargs)
+                    except Exception as retry_exc:
+                        yield f"\n\n⚠️ API Error: {retry_exc}"
+                        return
+                elif use_tools and any(m in lowered for m in _TOOL_UNSUPPORTED_MARKERS):
                     self.supports_tools = False
                     kwargs.pop("tools", None)
                     kwargs.pop("tool_choice", None)
@@ -199,6 +230,8 @@ class LLMClient:
                         "content": str(tool_result),
                     }
                 )
+
+            searches_made += sum(1 for t in tool_calls if t["function"]["name"] == search_tool_name)
 
             if is_final and reasoning_chars and not full_content.strip():
                 yield (

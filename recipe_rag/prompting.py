@@ -36,11 +36,8 @@ RULES — follow them exactly:
    something to make. Do NOT answer the off-topic question from general
    knowledge — this assistant is a cookbook, not a general chatbot.
 
-1. Call `search_cookbook` ONCE to gather evidence. Call it a second time only if
-   the first call returned nothing usable. You MUST then stop searching and write
-   the answer from whatever you have. Never make a third search — rephrasing the
-   same question repeatedly is not progress, and an unfinished answer is worse
-   than an imperfect one.
+1. Search the cookbook before answering a food question. The system caps how
+   many searches you can make, so do not try to manage that yourself.
 
 2. ANSWER ONLY FROM THE RETRIEVED PASSAGES. Do not add ingredients, quantities,
    temperatures or steps that are not present in them.
@@ -81,7 +78,8 @@ library, each prefixed with its dish name in 【brackets】.
 
 RULES:
 
-1. Call `search_cookbook` first to look for inspiration.
+1. Search the cookbook before answering a food question. The system caps how
+   many searches you can make, so do not try to manage that yourself.
 
 2. If the retrieved recipes fit the request, build on them and name them.
 
@@ -97,6 +95,50 @@ Formatting:
 - Ingredients as bullet points starting with "•".
 - Instructions as a numbered list.
 """
+
+
+#: Words that mean "this is a cooking question". Deliberately broad: a false
+#: positive only costs one extra model round (retrieval itself is ~1ms), while a
+#: false negative falls back to letting the model decide, i.e. today's behaviour.
+_FOOD_WORDS = frozenset("""
+cook cooking recipe recipes bake baking baked roast roasting fry frying fried grill
+grilled boil boiling simmer saute steam poach braise broil barbecue bbq
+dinner lunch breakfast brunch supper meal snack dessert pudding starter appetiser
+appetizer side main sauce gravy soup stew broth stock salad sandwich burger taco
+pizza pasta spaghetti noodle noodles rice risotto curry stirfry dumpling dumplings
+bread breadcrumbs dough batter pastry pie tart cake cakes cookie cookies biscuit
+brownie muffin pancake waffle crepe scone croissant toast crumble
+chicken beef pork lamb veal turkey duck bacon ham sausage steak mince meat
+fish salmon tuna cod prawn prawns shrimp crab lobster oyster clam squid
+tofu tempeh seitan bean beans lentil lentils chickpea chickpeas
+egg eggs cheese milk cream butter yoghurt yogurt honey sugar flour
+onion garlic tomato tomatoes potato potatoes carrot carrots celery pepper chilli
+chili ginger cumin paprika cinnamon nutmeg oregano basil thyme rosemary parsley
+coriander cilantro mint vanilla chocolate cocoa caramel nut nuts peanut peanuts
+almond almonds cashew walnut pecan pistachio sesame
+spinach kale broccoli cabbage cauliflower courgette zucchini aubergine eggplant
+mushroom mushrooms pumpkin squash beetroot radish lettuce cucumber avocado
+vegetable vegetables veggie fruit apple apples banana lemon lime orange mango
+berry berries strawberry blueberry raspberry peach pear plum grape
+oil vinegar wine seasoning spice spices herb herbs salt sauce soy mustard mayo
+ingredient ingredients pantry fridge leftovers leftover
+hungry eat eating food dish dishes menu chef kitchen cuisines flavour flavor
+vegetarian vegan gluten dairy allergy allergic keto paleo
+""".split())
+
+
+def looks_like_cooking(question: str, extra: str = "") -> bool:
+    """Cheap in-scope test used to decide whether to force a cookbook search.
+
+    `extra` is the augmented part of the request (pantry / dietary settings); if
+    the user has filled those in, the question is in scope by definition.
+    """
+    import re
+
+    haystack = f"{question} {extra}".lower()
+    if "ingredients i already have" in haystack or "dietary restrictions" in haystack:
+        return True
+    return bool(set(re.findall(r"[a-z]+", haystack)) & _FOOD_WORDS)
 
 
 def get_system_prompt(mode: str | None = None) -> str:

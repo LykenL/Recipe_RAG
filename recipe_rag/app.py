@@ -12,7 +12,7 @@ import numpy as np
 from .config import load_env, load_llm_config
 from .embedding import get_embedder
 from .llm import LLMClient
-from .prompting import get_system_prompt
+from .prompting import get_system_prompt, looks_like_cooking
 from .retrieval import _entry_title, embedding_matrix, search_for_prompt
 from .vector_store import load_index
 
@@ -24,6 +24,8 @@ DEFAULT_MIN_SIMILARITY = 0.35
 #: is enough for "search, maybe rephrase, then answer"; five was the old default
 #: and produced four searches for a single simple question.
 DEFAULT_MAX_ITERATIONS = int(os.getenv("MAX_ITERATIONS", "4"))
+#: Two is enough: the model rephrases rather than broadens after that.
+DEFAULT_MAX_SEARCHES = int(os.getenv("MAX_SEARCHES", "2"))
 
 # Used only when an index predates model metadata (legacy .emb pickle).
 _LEGACY_MODEL = "all-MiniLM-L6-v2"
@@ -73,6 +75,8 @@ class RecipeRAGAssistant:
     answer_mode: str | None = None
     #: how many tool-calling rounds the agent may take; each one costs a round trip
     max_iterations: int = DEFAULT_MAX_ITERATIONS
+    #: hard cap on cookbook searches, enforced in the loop (not asked for in prose)
+    max_searches: int = DEFAULT_MAX_SEARCHES
     #: hits from the most recent tool call — the UI reads this, the LLM never sees it
     last_hits: list[Hit] = field(default_factory=list, repr=False)
     _matrix: np.ndarray | None = field(default=None, repr=False)
@@ -197,12 +201,30 @@ class RecipeRAGAssistant:
 
         tool_handlers = {"search_cookbook": self.search_cookbook}
 
+        # Forcing the first search is OFF by default, on measurement.
+        #
+        # It does eliminate "answered a food question without consulting the
+        # cookbook", but it broke a case that already worked: asked for a nut
+        # dessert while declaring a nut allergy, the model used to refuse
+        # cleanly in 6s; forced to search first it retrieved the nut recipes,
+        # then burned its whole budget deliberating and returned nothing.
+        #
+        # The original behaviour was also not dishonest — a search-less answer
+        # already renders as "No cookbook match — answered without sources" and
+        # the trace says no search was needed. Set FORCE_FIRST_SEARCH=1 to opt in.
+        force_first = (
+            os.getenv("FORCE_FIRST_SEARCH", "0").strip().lower() in {"1", "true", "yes"}
+            and looks_like_cooking(query)
+        )
+
         yield from self.llm.agent_loop(
             system_prompt=get_system_prompt(self.answer_mode),
             user_query=query,
             tools=tools,
             tool_handlers=tool_handlers,
             history=history,
+            force_first_search=force_first,
+            max_searches=self.max_searches,
             max_iterations=self.max_iterations,
             # Reasoning models bill deliberation against this budget; leave room
             # for the actual answer on top of it.
